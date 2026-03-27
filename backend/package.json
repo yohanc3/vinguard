@@ -2,6 +2,7 @@
   "name": "vinguard-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
+    "worker": "bun run src/worker.ts",
     "test": "bun test tests/main.test.ts",
     "test:watch": "bun test --watch tests/main.test.ts"
   },
@@ -19,6 +20,7 @@
     "drizzle-orm": "^0.45.1",
     "hono": "^4.12.8",
     "pdf-parse": "^2.4.5",
+    "playwright": "^1.58.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
