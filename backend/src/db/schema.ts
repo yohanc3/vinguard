@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -23,7 +23,18 @@ export const cars = sqliteTable("cars", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  vin: text("vin"),
+  make: text("make"),
+  model: text("model"),
+  year: integer("year"),
+  trim: text("trim"),
+  exteriorColor: text("exterior_color"),
+  interiorColor: text("interior_color"),
+  listingPrice: integer("listing_price"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date(),
+  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
 });
@@ -57,9 +68,21 @@ export const filesRelations = relations(files, ({ one }) => ({
   }),
 }));
 
+export const scrapeJobs = sqliteTable("scrape_jobs", {
+  id: text("id").primaryKey(),
+  url: text("url").notNull(),
+  status: text("status").default("pending"),
+  result: text("result"),
+  error: text("error"),
+  createdAt: integer("created_at").default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at").default(sql`(unixepoch())`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
 export type File = typeof files.$inferSelect;
 export type NewFile = typeof files.$inferInsert;
+export type ScrapeJob = typeof scrapeJobs.$inferSelect;
+export type NewScrapeJob = typeof scrapeJobs.$inferInsert;
