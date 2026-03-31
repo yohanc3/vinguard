@@ -1,6 +1,6 @@
 import { Loader2, ScanLine } from "lucide-react"
-import { Card, CardContent } from "#/components/ui/card"
-import { Progress } from "#/components/ui/progress"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 
 interface ScanningOverlayProps {
   progress: number

@@ -1,5 +1,5 @@
 import { CheckCircle2, Copy } from "lucide-react"
-import { useClipboard } from "#/hooks/use-clipboard"
+import { useClipboard } from "@/hooks/use-clipboard"
 
 interface VinDisplayProps {
   vin: string

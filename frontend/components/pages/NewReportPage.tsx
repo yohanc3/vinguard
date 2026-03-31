@@ -15,15 +15,15 @@ import {
   AlertTriangle,
   Sparkles,
 } from "lucide-react"
-import { Button } from "#/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "#/components/ui/card"
-import { Input } from "#/components/ui/input"
-import { Textarea } from "#/components/ui/textarea"
-import { AppHeader } from "#/components/layout/app-header"
-import { StepIndicator } from "#/components/new-report/step-indicator"
-import { ScanningOverlay } from "#/components/new-report/scanning-overlay"
-import { useUrlValidation } from "#/hooks/use-url-validation"
-import { useVinValidation } from "#/hooks/use-vin-validation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { AppHeader } from "@/components/layout/app-header"
+import { StepIndicator } from "@/components/new-report/step-indicator"
+import { ScanningOverlay } from "@/components/new-report/scanning-overlay"
+import { useUrlValidation } from "@/hooks/use-url-validation"
+import { useVinValidation } from "@/hooks/use-vin-validation"
 
 interface NewReportPageProps {
   onBack: () => void

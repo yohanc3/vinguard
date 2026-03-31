@@ -1,6 +1,6 @@
 import { Clock, DollarSign, ChevronRight } from "lucide-react"
-import { Card } from "#/components/ui/card"
-import { RiskBadge } from "#/components/risk-badge"
+import { Card } from "@/components/ui/card"
+import { RiskBadge } from "@/components/risk-badge"
 
 interface Report {
   id: string

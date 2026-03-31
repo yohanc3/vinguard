@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { validateVin } from "#/lib/validation"
+import { validateVin } from "@/lib/validation"
 
 export function useVinValidation(vin: string) {
   const [isValid, setIsValid] = useState<boolean | null>(null)

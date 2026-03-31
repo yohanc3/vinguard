@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { validateListingUrl } from "#/lib/validation"
+import { validateListingUrl } from "@/lib/validation"
 
 export function useUrlValidation(url: string) {
   const [isValid, setIsValid] = useState<boolean | null>(null)
