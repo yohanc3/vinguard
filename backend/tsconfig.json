@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": ["ESNext", "DOM"],
+    "types": ["node", "bun-types"]
+
+    // ... other options
+  },
+  "include": ["**/*"]
+}

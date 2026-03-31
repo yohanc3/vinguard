@@ -7,10 +7,7 @@ import {
   pdfExtractedDataSchema,
   listingExtractedDataSchema,
 } from "../../services/llm"
-import {
-  scrapeMarketplaceListing,
-  formatListingForLLM,
-} from "../../services/marketplace"
+import { scrapeMarketplaceListing } from "../../services/marketplace"
 
 const combinedExtractedDataSchema = pdfExtractedDataSchema.merge(listingExtractedDataSchema)
 
@@ -57,7 +54,7 @@ export const extractRouter = router({
       try {
         listing = await scrapeMarketplaceListing(input.url)
         console.log(`[extract.fromListingUrl] Scrape complete. Listing title: ${listing.marketplace_listing_title || "N/A"}`)
-        console.log(`[extract.fromListingUrl] Listing data: ${JSON.stringify(listing, null, 2).substring(0, 1000)}...`)
+        console.log(`[extract.fromListingUrl] Listing data: ${JSON.stringify(listing, null, 2)}...`)
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown scrape error"
         const stack = error instanceof Error ? error.stack : undefined
@@ -70,29 +67,14 @@ export const extractRouter = router({
         })
       }
 
-      let listingText
       try {
-        listingText = formatListingForLLM(listing)
-        console.log(`[extract.fromListingUrl] Formatted text (${listingText.length} chars): ${listingText.substring(0, 500)}...`)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown format error"
-        console.error(`[extract.fromListingUrl] Format failed: ${message}`)
-        console.error(`[extract.fromListingUrl] Raw listing: ${JSON.stringify(listing, null, 2)}`)
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Format failed: ${message}`,
-        })
-      }
-
-      try {
-        const extracted = await extractListingData(listingText)
+        const extracted = await extractListingData(listing)
         console.log(`[extract.fromListingUrl] Extraction complete: ${JSON.stringify(extracted)}`)
         return extracted
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown extraction error"
         const stack = error instanceof Error ? error.stack : undefined
         console.error(`[extract.fromListingUrl] LLM extraction failed: ${message}`)
-        console.error(`[extract.fromListingUrl] Input text was: ${listingText}`)
         if (stack) console.error(`[extract.fromListingUrl] Stack: ${stack}`)
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -118,7 +100,7 @@ export const extractRouter = router({
         listingUrl
           ? (async function () {
               const listing = await scrapeMarketplaceListing(listingUrl)
-              return extractListingData(formatListingForLLM(listing))
+              return extractListingData(listing)
             })()
           : listingText
             ? extractListingData(listingText)

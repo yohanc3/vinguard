@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { publicProcedure, router } from "../trpc"
-import { enqueueJob, getJob } from "../../services/scrape-queue"
+import { enqueueJob, getJob } from "../../services/scraper/scrape-queue"
 
 export const scrapeRouter = router({
   startScrape: publicProcedure

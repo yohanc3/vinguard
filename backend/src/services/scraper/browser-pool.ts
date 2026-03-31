@@ -10,7 +10,7 @@ export async function getBrowser(): Promise<Browser> {
   if (!browser) {
     console.log("[BrowserPool] Launching browser...")
     browser = await chromium.launch({
-      headless: false,
+      headless: true,
       args: [
         "--no-sandbox",
         "--disable-blink-features=AutomationControlled",

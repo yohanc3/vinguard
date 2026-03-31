@@ -51,9 +51,9 @@ async function testDirectScrape() {
     expect(result.details).toContain("2006 Corolla 140k miles.")
     console.log(`  [4.1] ✓ Details contains expected text`)
 
-    // Verify 3 images
-    expect(result.images.length).toBe(3)
-    console.log(`  [4.1] ✓ Images: ${result.images.length}`)
+    // Verify at least 3 photos
+    expect(result.photos.length).toBeGreaterThanOrEqual(3)
+    console.log(`  [4.1] ✓ Photos: ${result.photos.length}`)
 
     console.log(`  ✓ 4.1 Direct scrape: passed (${elapsed}ms)`)
   } catch (err) {

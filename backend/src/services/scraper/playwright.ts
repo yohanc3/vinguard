@@ -4,31 +4,18 @@ import { acquirePage, releasePage } from "./browser-pool"
 export interface ScrapedListing {
   miles: string | null
   price: string | null
-  images: string[]
+  photos: string[]
   details: string | null
 }
-
-function transformDotlessClass(cl: string): string {
-  return "." + cl.replace(/\s+/g, ".")
-}
-
-const listingPriceParentClass = "xyamay9 xv54qhq x18d9i69 xf7dkkf"
-const listingPriceClass =
-  "x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x xudqn12 x676frb x1lkfr7t x1lbecb7 x1s688f xzsf02u"
-
-const listingDetailsParentClass = "xz9dl7a xyri2b xsag5q8 x1c1uobl x126k92a"
-const listingDetailsClass =
-  "x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x xudqn12 x3x7a5m x6prxxf xvq8zen xo1l8bm xzsf02u"
-
-const listingImagesParentClass =
-  "x6s0dn4 x78zum5 x1y1aw1k xwib8y2 xu6gjpd x11xpdln x1r7x56h xuxw1ft xc9qbxq xw2csxc x10wlt62 xish69e"
-const listingImagesClass = "x1fmog5m xu25z0z x140muxe xo1y3bh x5yr21d xl1xv1r xh8yej3"
 
 async function bypassLoginModal(page: Page): Promise<void> {
   try {
     const closeModalButton = page.getByLabel("Close")
-    await closeModalButton.waitFor({ state: "visible", timeout: 3000 })
     await closeModalButton.click({ delay: 100 })
+
+    if (await closeModalButton.isVisible().catch(() => false)) {
+      await closeModalButton.click()
+    }
     console.log("[Scraper] Login modal closed")
   } catch {
     console.log("[Scraper] No login modal found")
@@ -36,75 +23,54 @@ async function bypassLoginModal(page: Page): Promise<void> {
 }
 
 async function scrapeListingData(page: Page, url: string): Promise<ScrapedListing> {
+  const start = Date.now()
   console.log(`[Scraper] Navigating to ${url}`)
-  await page.goto(url)
+
+  await page.goto(url, { waitUntil: "domcontentloaded" })
 
   await bypassLoginModal(page)
 
-  // Open "See more" to get full details
-  try {
-    const seeMoreLocator = page.locator('div[role="button"]', { hasText: "See more" })
-    await seeMoreLocator.waitFor({ state: "visible", timeout: 5000 })
-    await seeMoreLocator.click({ delay: 100 })
-  } catch {
-    console.log("[Scraper] No 'See more' button found")
+  // Click "See more" if visible
+  const seeMore = page.locator("span", { hasText: "See more" }).last()
+  if (await seeMore.isVisible().catch(() => false)) {
+    await seeMore.click()
   }
 
-  // Extract miles
-  let miles: string | null = null
-  try {
-    const milesLocator = page.getByText("Driven")
-    const milesText = await milesLocator.evaluate((el) => el.innerHTML)
-    miles = milesText?.replace("Driven", "").replace("miles", "").trim() || null
-  } catch {
-    console.log("[Scraper] Could not extract miles")
-  }
+  // Extract all data in a single DOM traversal
+  const data = await page.evaluate(() => {
+    function getText(el: Element | null | undefined): string | null {
+      return el?.textContent?.trim() ?? null
+    }
 
-  // Extract price
-  let price: string | null = null
-  try {
-    const priceLocator = page
-      .locator(transformDotlessClass(listingPriceParentClass))
-      .locator("span" + transformDotlessClass(listingPriceClass))
-    const priceText = await priceLocator.innerHTML()
-    price = priceText?.replace("$", "").replace(",", "") || null
-  } catch {
-    console.log("[Scraper] Could not extract price")
-  }
+    const allSpans = document.querySelectorAll("span")
 
-  // Extract details
-  let details: string | null = null
-  try {
-    const detailsLocator = page
-      .locator(transformDotlessClass(listingDetailsParentClass))
-      .locator("span" + transformDotlessClass(listingDetailsClass))
-    details = await detailsLocator.evaluate((el) => {
-      return Array.from(el.childNodes)
-        .filter((node) => node.nodeType === Node.TEXT_NODE)
-        .map((node) => node.textContent)
-        .join("")
-        .trim()
-    })
-  } catch {
-    console.log("[Scraper] Could not extract details")
-  }
+    // Miles
+    const milesEl = Array.from(allSpans).find((el) => el.innerText?.includes("Driven"))
+    const miles = getText(milesEl)?.replace("Driven", "")?.replace("miles", "")?.trim() ?? null
 
-  // Extract images
-  let images: string[] = []
-  try {
-    images = await page
-      .locator("div" + transformDotlessClass(listingImagesParentClass))
-      .locator("img" + transformDotlessClass(listingImagesClass))
-      .evaluateAll((imgs) =>
-        imgs.map((img) => img.getAttribute("src")).filter((src): src is string => src !== null)
-      )
-  } catch {
-    console.log("[Scraper] Could not extract images")
-  }
+    // Price
+    const priceEl = Array.from(allSpans).find((el) => el.innerText?.includes("$"))
+    const price = getText(priceEl)?.replace("$", "")?.replace(",", "") ?? null
 
-  console.log(`[Scraper] Extracted: miles=${miles}, price=${price}, images=${images.length}`)
+    // Details
+    const detailsEl = Array.from(allSpans).find((el) => el.innerText?.includes("See less"))
+    const details = detailsEl?.innerText?.replace("See less", "").trim() ?? null
 
-  return { miles, price, images, details }
+    // Photos
+    const productPhotos = document.querySelectorAll('img[alt*="Product photo"]')
+    const photos = Array.from(productPhotos)
+      .map((img) => (img as HTMLImageElement).src)
+      .filter((src) => src)
+
+    return { miles, price, details, photos }
+  })
+
+  const elapsed = Date.now() - start
+  console.log(
+    `[Scraper] Extracted in ${elapsed}ms: miles=${data.miles}, price=${data.price}, photos=${data.photos.length}`
+  )
+
+  return data
 }
 
 export async function scrapeWithPlaywright(url: string): Promise<ScrapedListing> {
