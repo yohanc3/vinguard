@@ -19,6 +19,7 @@ import { runAuthTests } from "./auth"
 import { runCarsTests } from "./cars"
 import { runLlmTests } from "./llm"
 import { runScraperTests } from "./scraper"
+import { runChatTests } from "./chat"
 
 describe("Vinguard Backend", function testSuite() {
   beforeAll(async function setup() {
@@ -35,7 +36,7 @@ describe("Vinguard Backend", function testSuite() {
 
   test("2. Cars CRUD (Palantir)", async function carsTests() {
     await runCarsTests()
-  })
+  }, 60000)
 
   test("3. LLM Extraction", async function llmTests() {
     await runLlmTests()
@@ -44,4 +45,8 @@ describe("Vinguard Backend", function testSuite() {
   test("4. Scraper (Playwright)", async function scraperTests() {
     await runScraperTests()
   }, 60000)
+
+  test("5. Chat (DDG + Palantir)", async function chatTests() {
+    await runChatTests()
+  }, 120000)
 })

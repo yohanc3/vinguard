@@ -15,6 +15,14 @@ function getHeaders() {
     }
 }
 
+const chatHistoryEntrySchema = z.object({
+    role: z.string(),
+    message: z.string(),
+    source1: z.string().optional().nullable(),
+    source2: z.string().optional().nullable(),
+    source3: z.string().optional().nullable(),
+})
+
 const carSchema = z.object({
     // Palantir internal fields
     __primaryKey: z.string().optional(),
@@ -24,6 +32,8 @@ const carSchema = z.object({
     // Car fields - all optional
     id: z.string().optional(),
     userId: z.string().optional(),
+    chatHistory: z.array(chatHistoryEntrySchema).optional(),
+    vin: z.string().optional(),
     make: z.string().optional(),
     model: z.string().optional(),
     year: z.number().optional(),
@@ -32,12 +42,12 @@ const carSchema = z.object({
     bodyStyle: z.string().optional(),
     engineType: z.string().optional(),
     cylinders: z.number().optional(),
-    msrp: z.string().optional(),
+    msrp: z.number().optional(),
     listingPrice: z.number().optional(),
     listingMileage: z.string().optional(),
     listingDetails: z.array(z.string()).optional(),
     listingPictures: z.array(z.string()).optional(),
-    odometerReadings: z.array(z.string()).optional(),
+    odometerReadings: z.array(z.number()).optional(),
     numberOfPreviousOwners: z.number().optional(),
     stateOfRegistration: z.string().optional(),
     titleStatus: z.string().optional(),
@@ -51,6 +61,8 @@ const carSchema = z.object({
 const carInputSchema = z.object({
     id: z.string().optional(),
     userId: z.string().optional(),
+    chatHistory: z.array(chatHistoryEntrySchema).optional(),
+    vin: z.string().optional(),
     make: z.string().optional(),
     model: z.string().optional(),
     year: z.number().optional(),
@@ -60,12 +72,12 @@ const carInputSchema = z.object({
     bodyStyle: z.string().optional(),
     engineType: z.string().optional(),
     cylinders: z.number().optional(),
-    msrp: z.string().optional(),
+    msrp: z.number().optional(),
     listingPrice: z.number().optional(),
     listingMileage: z.string().optional(),
     listingDetails: z.array(z.string()).optional(),
     listingPictures: z.array(z.string()).optional(),
-    odometerReadings: z.array(z.string()).optional(),
+    odometerReadings: z.array(z.number()).optional(),
     numberOfPreviousOwners: z.number().optional(),
     stateOfRegistration: z.string().optional(),
     titleStatus: z.string().optional(),
@@ -136,6 +148,7 @@ export const carsRouter = router({
     create: publicProcedure
         .input(carInputSchema)
         .mutation(async function createCar({ input }) {
+            console.log("input", input)
             const res = await fetch(`${baseUrl}/actions/create-cars/apply`, {
                 method: "POST",
                 headers: getHeaders(),
@@ -159,6 +172,7 @@ export const carsRouter = router({
         .mutation(async function updateCar({ input }) {
             const { id, ...data } = input
 
+            console.log("edit id", id, "edit data", input)
             const res = await fetch(`${baseUrl}/actions/edit-cars/apply`, {
                 method: "POST",
                 headers: getHeaders(),
@@ -174,6 +188,7 @@ export const carsRouter = router({
             }
 
             const json = await res.json()
+            console.log("result", JSON.stringify(json))
             return json
         }),
 

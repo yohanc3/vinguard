@@ -100,6 +100,9 @@ async function testUpdateCar() {
         `/trpc/cars.getById?input=${encodeURIComponent(JSON.stringify({ id: testState.createdCarId }))}`,
         { method: "GET" }
     )
+    
+    const beforeJSON = await before.json()
+    console.log("before json", beforeJSON)
 
     const res = await testState.app!.request("/trpc/cars.update", {
         method: "POST",
@@ -132,6 +135,8 @@ async function testVerifyUpdate() {
 
     const json = (await res.json()) as { result: { data: Record<string, unknown> } }
     const car = json.result.data
+
+    console.log("car", car, "updated car data", UPDATED_CAR_DATA.listingPrice)
 
     expect(car.listingPrice).toBe(UPDATED_CAR_DATA.listingPrice)
     expect(car.color).toBe(UPDATED_CAR_DATA.color)

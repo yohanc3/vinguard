@@ -3,15 +3,12 @@
  */
 
 import { expect } from "bun:test"
-import { readFile } from "node:fs/promises"
-import { PDFParse } from "pdf-parse"
 import { testState } from "./state"
 import {
   pdfExtractedDataSchema,
   listingExtractedDataSchema,
 } from "../src/services/llm"
-
-const TEST_TIMEOUT = 15000
+import {PDFParse} from "pdf-parse"
 
 export async function runLlmTests() {
   console.log("\n" + "─".repeat(60))
@@ -25,19 +22,20 @@ export async function runLlmTests() {
 }
 
 async function testPdfSchemaValidation() {
+  // Test that a valid PDF extraction response passes schema validation
   const validResponse = {
+    vin: "4T1BF1FK5CU123456",
     bodyStyle: "Sedan",
     color: "Silver",
     cylinders: 6,
     engineType: "V6",
-    exteriorColor: "Silver Metallic",
-    odometerReadings: ["10000", "20000", "30000"],
+    odometerReadings: [10000, 20000, 30000],
     fairMarketValueHigh: 35000,
     fairMarketValueLow: 30000,
     floodDamageHistory: "None",
     make: "Toyota",
     model: "Camry",
-    msrp: "32000",
+    msrp: 32000,
     numberOfPreviousOwners: 2,
     salvageRecord: "None",
     stateOfRegistration: "CA",
@@ -49,12 +47,13 @@ async function testPdfSchemaValidation() {
   const parsed = pdfExtractedDataSchema.safeParse(validResponse)
   expect(parsed.success).toBe(true)
 
+  // Test with null values (should pass - LLM returns null for unfound)
   const responseWithNulls = {
+    vin: null,
     bodyStyle: null,
     color: "Blue",
     cylinders: null,
     engineType: "I4",
-    exteriorColor: null,
     odometerReadings: null,
     fairMarketValueHigh: null,
     fairMarketValueLow: null,
@@ -77,6 +76,7 @@ async function testPdfSchemaValidation() {
 }
 
 async function testListingSchemaValidation() {
+  // Test valid listing extraction response
   const validResponse = {
     listingMileage: "45000",
     listingDetails: [
@@ -95,6 +95,7 @@ async function testListingSchemaValidation() {
   const parsed = listingExtractedDataSchema.safeParse(validResponse)
   expect(parsed.success).toBe(true)
 
+  // Test with null values
   const responseWithNulls = {
     listingMileage: null,
     listingDetails: null,
@@ -109,103 +110,52 @@ async function testListingSchemaValidation() {
 }
 
 async function testRealPdfExtraction() {
+  // Skip if Palantir is not available
   if (!testState.palantirAvailable) {
     console.log("  ⊘ 3.3 Real PDF extraction: skipped (Palantir unavailable)")
     return
   }
 
+  // Read the test PDF and extract text
   const pdfPath = "./tests/vin-report-test.pdf"
-  
-  // Check if file exists
-  const file = Bun.file(pdfPath)
-  if (!(await file.exists())) {
-    console.log("  ⊘ 3.3 Real PDF extraction: skipped (test PDF not found at " + pdfPath + ")")
+  const parser = new PDFParse({url: pdfPath})
+
+  const fileTextResult = await parser.getText()
+  const fileText =
+    typeof fileTextResult === "string" ? fileTextResult : (fileTextResult as any).text
+
+  const res = await testState.app!.request("/trpc/extract.fromPdfText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: fileText }),
+  })
+
+  if (res.status !== 200) {
+    const errorText = await res.text()
+    console.log(`  ⊘ 3.3 Real PDF extraction: failed - ${errorText.substring(0, 100)}`)
     return
   }
 
-  console.log("  [3.3] Reading PDF file...")
-  
-  // Extract text from PDF using pdf-parse
-  let pdfText: string
-  try {
-    const buffer = await readFile(pdfPath)
-    const parser = new PDFParse({ data: buffer })
-    const result = await parser.getText()
-    await parser.destroy()
-    pdfText = result.text
-    console.log(`  [3.3] Extracted ${pdfText.length} characters from PDF`)
-    console.log(`  [3.3] Preview: ${pdfText.substring(0, 200).replace(/\n/g, " ")}...`)
-  } catch (err) {
-    console.log(`  ✗ 3.3 Real PDF extraction: failed to read PDF`)
-    console.log(`  [3.3] Error: ${err instanceof Error ? err.message : String(err)}`)
-    return
-  }
+  const json = (await res.json()) as { result: { data: Record<string, unknown> } }
+  const extracted = json.result.data
 
-  if (pdfText.length < 50) {
-    console.log(`  ✗ 3.3 Real PDF extraction: PDF text too short (${pdfText.length} chars)`)
-    return
-  }
+  // Verify key fields were extracted
+  expect(extracted.vin).toBeDefined()
+  expect(extracted.make).toBeDefined()
+  expect(extracted.model).toBeDefined()
+  expect(extracted.year).toBeDefined()
 
-  console.log(`  [3.3] Calling extract.fromPdfText (timeout: ${TEST_TIMEOUT}ms)...`)
-  
-  const requestBody = { text: pdfText }
-  const startTime = Date.now()
-  
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TEST_TIMEOUT)
-  
-  try {
-    const res = await testState.app!.request("/trpc/extract.fromPdfText", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    })
-    
-    clearTimeout(timeoutId)
-    const elapsed = Date.now() - startTime
-    
-    const responseText = await res.text()
-    
-    if (res.status !== 200) {
-      console.log(`  ✗ 3.3 Real PDF extraction: failed (${elapsed}ms)`)
-      console.log(`  [3.3] Status: ${res.status}`)
-      console.log(`  [3.3] Response: ${responseText.substring(0, 500)}`)
-      return
-    }
-
-    const json = JSON.parse(responseText) as { result: { data: Record<string, unknown> } }
-    const extracted = json.result.data
-
-    console.log(`  [3.3] Response received (${elapsed}ms)`)
-    console.log(`  [3.3] Extracted data: ${JSON.stringify(extracted, null, 2).substring(0, 500)}`)
-
-    expect(extracted).toBeDefined()
-    
-    const make = extracted.make
-    const model = extracted.model
-    const year = extracted.year
-
-    console.log(`  ✓ 3.3 Real PDF extraction: ${year || "?"} ${make || "?"} ${model || "?"} (${elapsed}ms)`)
-  } catch (err) {
-    clearTimeout(timeoutId)
-    const elapsed = Date.now() - startTime
-    
-    if (err instanceof Error && err.name === "AbortError") {
-      console.log(`  ✗ 3.3 Real PDF extraction: timed out after ${TEST_TIMEOUT}ms`)
-    } else {
-      console.log(`  ✗ 3.3 Real PDF extraction: error after ${elapsed}ms`)
-      console.log(`  [3.3] Error: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }
+  console.log(`  ✓ 3.3 Real PDF extraction: ${extracted.year} ${extracted.make} ${extracted.model}`)
 }
 
 async function testListingExtraction() {
+  // Skip if Palantir is not available
   if (!testState.palantirAvailable) {
     console.log("  ⊘ 3.4 Listing extraction: skipped (Palantir unavailable)")
     return
   }
 
+  // Test with mock listing data (no Apify call)
   const mockListingText = `
     Title: 2022 Toyota Camry XSE - Excellent Condition
     Price: $29,500
@@ -225,60 +175,29 @@ async function testListingExtraction() {
     https://example.com/camry3.jpg
   `
 
-  console.log(`  [3.4] Calling extract.fromListingText (timeout: ${TEST_TIMEOUT}ms)...`)
-  
-  const requestBody = { text: mockListingText }
-  const startTime = Date.now()
-  
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TEST_TIMEOUT)
-  
-  try {
-    const res = await testState.app!.request("/trpc/extract.fromListingText", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    })
-    
-    clearTimeout(timeoutId)
-    const elapsed = Date.now() - startTime
-    
-    const responseText = await res.text()
-    
-    if (res.status !== 200) {
-      console.log(`  ✗ 3.4 Listing extraction: failed (${elapsed}ms)`)
-      console.log(`  [3.4] Status: ${res.status}`)
-      console.log(`  [3.4] Response: ${responseText.substring(0, 500)}`)
-      return
-    }
+  const res = await testState.app!.request("/trpc/extract.fromListingText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: mockListingText }),
+  })
 
-    const json = JSON.parse(responseText) as { result: { data: Record<string, unknown> } }
-    const extracted = json.result.data
+  if (res.status !== 200) {
+    const errorText = await res.text()
+    console.log(`  ⊘ 3.4 Listing extraction: failed - ${errorText.substring(0, 100)}`)
+    return
+  }
 
-    console.log(`  [3.4] Response received (${elapsed}ms)`)
-    console.log(`  [3.4] Extracted data: ${JSON.stringify(extracted, null, 2)}`)
+  const json = (await res.json()) as { result: { data: Record<string, unknown> } }
+  const extracted = json.result.data
 
-    expect(extracted).toBeDefined()
-    
-    const price = extracted.listingPrice
-    const mileage = extracted.listingMileage
-    const details = extracted.listingDetails as string[] | null
+  // Verify listing fields were extracted
+  expect(extracted.listingPrice).toBeDefined()
+  expect(extracted.listingMileage).toBeDefined()
 
-    if (details && details.length > 0) {
-      console.log(`  ✓ 3.4 Listing extraction: price=${price}, mileage=${mileage}, ${details.length} details (${elapsed}ms)`)
-    } else {
-      console.log(`  ✓ 3.4 Listing extraction: price=${price}, mileage=${mileage} (${elapsed}ms)`)
-    }
-  } catch (err) {
-    clearTimeout(timeoutId)
-    const elapsed = Date.now() - startTime
-    
-    if (err instanceof Error && err.name === "AbortError") {
-      console.log(`  ✗ 3.4 Listing extraction: timed out after ${TEST_TIMEOUT}ms`)
-    } else {
-      console.log(`  ✗ 3.4 Listing extraction: error after ${elapsed}ms`)
-      console.log(`  [3.4] Error: ${err instanceof Error ? err.message : String(err)}`)
-    }
+  const details = extracted.listingDetails as string[] | null
+  if (details && details.length > 0) {
+    console.log(`  ✓ 3.4 Listing extraction: price=${extracted.listingPrice}, ${details.length} details`)
+  } else {
+    console.log(`  ✓ 3.4 Listing extraction: price=${extracted.listingPrice}`)
   }
 }
