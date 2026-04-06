@@ -1,6 +1,8 @@
 # Palantir LLM Integration
 
-This doc covers how to call the Palantir AIP ontology function that wraps an LLM (currently Opus 4.6) to handle arbitrary tasks.
+This doc covers how to call the Palantir AIP ontology function that wraps an LLM to handle arbitrary tasks.
+
+**Related docs:** [LLM Extraction](./llm-extraction.md) | [Vehicle Analysis](./vehicle-analysis.md)
 
 ## Prerequisites
 
@@ -65,6 +67,14 @@ const result = await response.json()
   }
 }
 ```
+
+## How It Integrates
+
+The `callPalantirLLM` function in `src/services/llm.ts` wraps this API and is used by:
+
+- **[LLM Extraction](./llm-extraction.md)** - Extract structured data from PDFs/listings
+- **[Vehicle Analysis](./vehicle-analysis.md)** - Generate queries and analysis reports
+- **Chat** - Answer user questions with web context
 
 ## Notes
 

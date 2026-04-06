@@ -2,6 +2,8 @@
 
 A lightweight web search and content extraction service using DuckDuckGo and Cheerio. No API keys required.
 
+**Related docs:** [Vehicle Analysis](./vehicle-analysis.md) | [LLM Extraction](./llm-extraction.md)
+
 ## Overview
 
 This service provides two main capabilities:
@@ -137,6 +139,19 @@ The service uses these default behaviors:
 - **Rate limiting** - DuckDuckGo may block excessive requests. Add delays if needed.
 - **HTML changes** - DuckDuckGo's markup may change, breaking the parser.
 - **Content quality** - Extraction is best-effort; some sites have poor semantic HTML.
+
+## How It Integrates
+
+This service is used by:
+
+- **[Vehicle Analysis](./vehicle-analysis.md)** - Researches make/model reliability, recalls, market values
+- **[Chat](./chat.md)** - Real-time web search for user questions
+
+Typical flow:
+
+```
+LLM generates queries → searchDuckDuckGoPlain() → extractFromSourcesParallel() → Context for LLM
+```
 
 ## Testing
 

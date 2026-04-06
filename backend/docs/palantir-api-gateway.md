@@ -2,6 +2,8 @@
 
 This doc covers how to interact with the Cars ontology object via the Palantir raw API.
 
+**Related docs:** [Palantir LLM](./palantir-llm.md) | [Vehicle Analysis](./vehicle-analysis.md)
+
 ## Prerequisites
 
 Add these to your `.env` file:
@@ -137,7 +139,9 @@ All fields are optional:
 | floodDamageHistory | string | Flood damage history |
 | fairMarketValueHigh | number | High FMV estimate |
 | fairMarketValueLow | number | Low FMV estimate |
-| carReport | string | URL to vehicle report |
+| carReport | string | R2 key for vehicle history PDF |
+| vehicleAnalysis | string | JSON analysis report (see [Vehicle Analysis](./vehicle-analysis.md)) |
+| chatHistory | array | Chat message history |
 
 ### Palantir Internal Fields (read-only)
 
@@ -147,3 +151,18 @@ All fields are optional:
 | __rid | string |
 | __apiName | string |
 | __title | string |
+
+## How It Integrates
+
+The Cars object is the central data store:
+
+```
+Report Creation ──▶ cars.create ──▶ Triggers Analysis Job
+                                         │
+                                         ▼
+                                 Vehicle Analysis ──▶ cars.update (vehicleAnalysis)
+                                         
+Chat ──▶ cars.update (chatHistory)
+```
+
+See [Vehicle Analysis](./vehicle-analysis.md) for the analysis pipeline.

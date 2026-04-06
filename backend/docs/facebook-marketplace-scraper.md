@@ -1,8 +1,10 @@
 # Facebook Marketplace Scraper (Apify)
 
-Scrape Facebook Marketplace listings using Apify.
+Low-level Apify actor reference for Facebook Marketplace scraping.
 
-> **Note:** For application usage, see `marketplace-service.md` which wraps this functionality.
+**Related docs:** [Marketplace Service](./marketplace-service.md) (wrapper) | [Extract Router](./extract-router.md)
+
+> **Note:** For application usage, see [Marketplace Service](./marketplace-service.md) which wraps this functionality.
 
 ## Prerequisites
 

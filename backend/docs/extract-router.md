@@ -2,6 +2,8 @@
 
 tRPC router for extracting vehicle data from PDFs and marketplace listings.
 
+**Related docs:** [LLM Extraction](./llm-extraction.md) | [Marketplace Service](./marketplace-service.md)
+
 ## Location
 
 `src/trpc/routers/extract.ts`
@@ -72,4 +74,15 @@ const result = await pdfMutation.mutateAsync({ text: pdfText })
 // Listing extraction (from URL)
 const listingMutation = useMutation(trpc.extract.fromListingUrl.mutationOptions({}))
 const result = await listingMutation.mutateAsync({ url: listingUrl })
+```
+
+## How It Integrates
+
+This is the entry point for report creation:
+
+```
+Frontend ──▶ extract.combined() ──▶ cars.create() ──▶ Analysis Job
+                │                        │
+                ├── LLM Extraction       └── See Vehicle Analysis
+                └── Marketplace Scrape
 ```

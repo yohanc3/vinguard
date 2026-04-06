@@ -2,6 +2,8 @@
 
 Extracts structured car data from text using Palantir AIP.
 
+**Related docs:** [Palantir LLM](./palantir-llm.md) | [Marketplace Service](./marketplace-service.md)
+
 ## Location
 
 `src/services/llm.ts`
@@ -59,8 +61,23 @@ const pdfData = await extractCarDataFromPdf(pdfText)
 const listingData = await extractListingData(listingText)
 ```
 
+## How It Integrates
+
+Used in the report creation flow:
+
+```
+PDF Upload ──▶ extractCarDataFromPdf() ──┐
+                                         ├──▶ Create Car in Palantir
+Listing URL ──▶ extractListingData() ────┘
+                                         │
+                                         ▼
+                              Enqueue Vehicle Analysis Job
+```
+
+See [Vehicle Analysis](./vehicle-analysis.md) for post-creation processing.
+
 ## Notes
 
 - Returns `null` for fields not found in text
 - Requires `PALANTIR_AIP_API_KEY` env var
-- Uses Palantir AIP `chatCompletion` query (see `palantir-llm.md`)
+- Uses Palantir AIP `chatCompletion` query (see [Palantir LLM](./palantir-llm.md))

@@ -2,6 +2,8 @@
 
 Scrapes vehicle listings from Facebook Marketplace using Apify.
 
+**Related docs:** [LLM Extraction](./llm-extraction.md) | [Extract Router](./extract-router.md)
+
 ## Location
 
 `src/services/marketplace.ts`
@@ -42,6 +44,16 @@ const extracted = await extractListingData(text)
 Requires `APIFY_API_TOKEN` env var.
 
 Uses Apify actor `Y0QGH7cuqgKtNbEgt` (Facebook Marketplace Scraper).
+
+## How It Integrates
+
+Part of the listing data extraction flow:
+
+```
+User provides URL ──▶ scrapeMarketplaceListing() ──▶ extractListingData() ──▶ Car creation
+```
+
+See [LLM Extraction](./llm-extraction.md) for extraction details.
 
 ## Notes
 
