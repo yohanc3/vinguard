@@ -3,17 +3,13 @@
  */
 
 import { expect } from "bun:test"
-import { testState, TEST_CAR, UPDATED_CAR_DATA } from "./state"
+import { testState, TEST_CAR, UPDATED_CAR_DATA, TEST_SCRAPE_RESULT, TEST_CARFAX_TEXT } from "./state"
 
 export async function runCarsTests() {
-    console.log("\n" + "─".repeat(60))
-    console.log("2. Cars CRUD Tests (Palantir)")
-    console.log("─".repeat(60))
 
     await checkPalantirConnectivity()
 
     if (!testState.palantirAvailable) {
-        console.log("  ⊘ 2.1-2.6 Skipped (Palantir unavailable)")
         return
     }
 
@@ -21,12 +17,12 @@ export async function runCarsTests() {
     await testFetchCar()
     await testUpdateCar()
     await testVerifyUpdate()
+    await testCreateReport()
     await testDeleteCar()
     await testVerifyDelete()
 }
 
 async function checkPalantirConnectivity() {
-    console.log("  [Palantir] Checking connectivity...")
 
     const res = await testState.app!.request("/trpc/cars.list", {
         method: "GET",
@@ -35,18 +31,9 @@ async function checkPalantirConnectivity() {
 
     if (res.status === 200) {
         testState.palantirAvailable = true
-        const json = (await res.json()) as { result: { data: { totalCount: string } } }
-        console.log(`  [Palantir] ✓ Connected (${json.result.data.totalCount} cars in ontology)\n`)
+        await res.json()
     } else {
-        const errorText = await res.text()
-
-        if (errorText.includes("Unauthorized") || errorText.includes("401")) {
-            console.log("  [Palantir] ✗ API key unauthorized.")
-            console.log("  [Palantir] Check PALANTIR_AIP_API_KEY in .env\n")
-        } else {
-            console.log("  [Palantir] ✗ Connection failed:", errorText.substring(0, 150), "\n")
-        }
-
+        await res.text()
         testState.palantirAvailable = false
     }
 }
@@ -67,7 +54,6 @@ async function testCreateCar() {
         throw new Error(`Create failed: ${responseText}`)
     }
 
-    console.log(`  ✓ 2.1 Create car: ID ${testState.createdCarId}`)
 }
 
 async function testFetchCar() {
@@ -90,7 +76,6 @@ async function testFetchCar() {
     expect(car.make).toBe(TEST_CAR.make)
     expect(car.model).toBe(TEST_CAR.model)
 
-    console.log(`  ✓ 2.2 Fetch car: ${car.make} ${car.model}`)
 }
 
 async function testUpdateCar() {
@@ -102,7 +87,6 @@ async function testUpdateCar() {
     )
     
     const beforeJSON = await before.json()
-    console.log("before json", beforeJSON)
 
     const res = await testState.app!.request("/trpc/cars.update", {
         method: "POST",
@@ -120,7 +104,6 @@ async function testUpdateCar() {
     )
 
     expect(res.status).toBe(200)
-    console.log("  ✓ 2.3 Update car: success")
 }
 
 async function testVerifyUpdate() {
@@ -136,13 +119,11 @@ async function testVerifyUpdate() {
     const json = (await res.json()) as { result: { data: Record<string, unknown> } }
     const car = json.result.data
 
-    console.log("car", car, "updated car data", UPDATED_CAR_DATA.listingPrice)
 
     expect(car.listingPrice).toBe(UPDATED_CAR_DATA.listingPrice)
     expect(car.color).toBe(UPDATED_CAR_DATA.color)
     expect(car.make).toBe(TEST_CAR.make)
 
-    console.log(`  ✓ 2.4 Verify update: price=${car.listingPrice}, color=${car.exteriorColor}`)
 }
 
 async function testDeleteCar() {
@@ -160,7 +141,38 @@ async function testDeleteCar() {
     }
 
     expect(res.status).toBe(200)
-    console.log(`  ✓ 2.5 Delete car: ID ${testState.createdCarId}`)
+}
+
+async function testCreateReport() {
+    const res = await testState.app!.request("/trpc/cars.createReport", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            marketplaceListing: "https://www.facebook.com/marketplace/item/1234567890/",
+            scrapeResult: TEST_SCRAPE_RESULT,
+            carfaxText: TEST_CARFAX_TEXT,
+            carReportKey: "test-reports/test-carfax.pdf",
+        }),
+    })
+
+    if (res.status !== 200) {
+        const errorText = await res.text()
+        return
+    }
+
+    const json = (await res.json()) as { result: { data: { carId: string; analysisJobId: string } } }
+    const result = json.result.data
+
+    expect(result.carId).toBeDefined()
+    expect(result.analysisJobId).toBeDefined()
+
+
+    // Clean up the created car
+    await testState.app!.request("/trpc/cars.delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: result.carId }),
+    })
 }
 
 async function testVerifyDelete() {
@@ -172,5 +184,4 @@ async function testVerifyDelete() {
     )
 
     expect(res.status).not.toBe(200)
-    console.log("  ✓ 2.6 Verify delete: car no longer exists")
 }

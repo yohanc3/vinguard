@@ -11,9 +11,6 @@ import {
 import {PDFParse} from "pdf-parse"
 
 export async function runLlmTests() {
-  console.log("\n" + "─".repeat(60))
-  console.log("3. LLM Extraction Tests")
-  console.log("─".repeat(60))
 
   await testPdfSchemaValidation()
   await testListingSchemaValidation()
@@ -72,7 +69,6 @@ async function testPdfSchemaValidation() {
   const parsedWithNulls = pdfExtractedDataSchema.safeParse(responseWithNulls)
   expect(parsedWithNulls.success).toBe(true)
 
-  console.log("  ✓ 3.1 PDF schema validation: passed")
 }
 
 async function testListingSchemaValidation() {
@@ -106,13 +102,11 @@ async function testListingSchemaValidation() {
   const parsedWithNulls = listingExtractedDataSchema.safeParse(responseWithNulls)
   expect(parsedWithNulls.success).toBe(true)
 
-  console.log("  ✓ 3.2 Listing schema validation: passed")
 }
 
 async function testRealPdfExtraction() {
   // Skip if Palantir is not available
   if (!testState.palantirAvailable) {
-    console.log("  ⊘ 3.3 Real PDF extraction: skipped (Palantir unavailable)")
     return
   }
 
@@ -132,7 +126,6 @@ async function testRealPdfExtraction() {
 
   if (res.status !== 200) {
     const errorText = await res.text()
-    console.log(`  ⊘ 3.3 Real PDF extraction: failed - ${errorText.substring(0, 100)}`)
     return
   }
 
@@ -145,13 +138,11 @@ async function testRealPdfExtraction() {
   expect(extracted.model).toBeDefined()
   expect(extracted.year).toBeDefined()
 
-  console.log(`  ✓ 3.3 Real PDF extraction: ${extracted.year} ${extracted.make} ${extracted.model}`)
 }
 
 async function testListingExtraction() {
   // Skip if Palantir is not available
   if (!testState.palantirAvailable) {
-    console.log("  ⊘ 3.4 Listing extraction: skipped (Palantir unavailable)")
     return
   }
 
@@ -183,7 +174,6 @@ async function testListingExtraction() {
 
   if (res.status !== 200) {
     const errorText = await res.text()
-    console.log(`  ⊘ 3.4 Listing extraction: failed - ${errorText.substring(0, 100)}`)
     return
   }
 
@@ -196,8 +186,6 @@ async function testListingExtraction() {
 
   const details = extracted.listingDetails as string[] | null
   if (details && details.length > 0) {
-    console.log(`  ✓ 3.4 Listing extraction: price=${extracted.listingPrice}, ${details.length} details`)
   } else {
-    console.log(`  ✓ 3.4 Listing extraction: price=${extracted.listingPrice}`)
   }
 }

@@ -21,9 +21,6 @@ export const palantirConfig = {
 }
 
 export async function setupTestEnvironment() {
-  console.log("\n" + "=".repeat(60))
-  console.log("VINGUARD BACKEND TEST SUITE")
-  console.log("=".repeat(60))
 
   // Clean up any existing test database
   if (existsSync(TEST_DB_PATH)) {
@@ -34,15 +31,12 @@ export async function setupTestEnvironment() {
   process.env.DB_FILE_NAME = TEST_DB_PATH
 
   // Create and migrate test database
-  console.log("\n[Setup] Creating test database...")
   const sqlite = new Database(TEST_DB_PATH)
   const db = drizzle({ client: sqlite })
   migrate(db, { migrationsFolder: "./drizzle" })
   sqlite.close()
-  console.log("[Setup] Test database created and migrated")
 
   // Verify Palantir config
-  console.log("[Setup] Palantir API config loaded")
 
   // Import app router after DB is set up (dynamic import)
   const { appRouter } = await import("../src/trpc/root")
@@ -52,18 +46,12 @@ export async function setupTestEnvironment() {
   app.use("/*", cors({ origin: "*" }))
   app.use("/trpc/*", trpcServer({ router: appRouter }))
 
-  console.log("[Setup] Test app created\n")
 
   return app
 }
 
 export async function cleanupTestEnvironment() {
-  console.log("\n[Cleanup] Removing test database...")
   if (existsSync(TEST_DB_PATH)) {
     await unlink(TEST_DB_PATH)
-    console.log("[Cleanup] Test database deleted")
   }
-  console.log("\n" + "=".repeat(60))
-  console.log("TEST SUITE COMPLETE")
-  console.log("=".repeat(60) + "\n")
 }

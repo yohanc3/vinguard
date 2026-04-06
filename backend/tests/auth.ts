@@ -6,9 +6,6 @@ import { expect } from "bun:test"
 import { testState, TEST_USER } from "./state"
 
 export async function runAuthTests() {
-  console.log("─".repeat(60))
-  console.log("1. Authentication Tests")
-  console.log("─".repeat(60))
 
   await testRegister()
   await testLogin()
@@ -34,7 +31,6 @@ async function testRegister() {
   testState.authToken = json.result.data.token
   testState.userId = json.result.data.user.id
 
-  console.log(`  ✓ 1.1 Register: user ID ${testState.userId} (${TEST_USER.email})`)
 }
 
 async function testLogin() {
@@ -53,7 +49,6 @@ async function testLogin() {
   testState.authToken = json.result.data.token
   expect(testState.authToken).toBeDefined()
 
-  console.log("  ✓ 1.2 Login: JWT stored")
 }
 
 async function testValidateToken() {
@@ -69,5 +64,4 @@ async function testValidateToken() {
   }
 
   expect(json.result.data.email).toBe(TEST_USER.email)
-  console.log("  ✓ 1.3 Token validation: success")
 }
