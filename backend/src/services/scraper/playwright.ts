@@ -16,16 +16,12 @@ async function bypassLoginModal(page: Page): Promise<void> {
     if (await closeModalButton.isVisible().catch(() => false)) {
       await closeModalButton.click()
     }
-    console.log("[Scraper] Login modal closed")
   } catch {
-    console.log("[Scraper] No login modal found")
+    // no login modal — expected on many pages
   }
 }
 
 async function scrapeListingData(page: Page, url: string): Promise<ScrapedListing> {
-  const start = Date.now()
-  console.log(`[Scraper] Navigating to ${url}`)
-
   await page.goto(url, { waitUntil: "domcontentloaded" })
 
   await bypassLoginModal(page)
@@ -64,11 +60,6 @@ async function scrapeListingData(page: Page, url: string): Promise<ScrapedListin
 
     return { miles, price, details, photos }
   })
-
-  const elapsed = Date.now() - start
-  console.log(
-    `[Scraper] Extracted in ${elapsed}ms: miles=${data.miles}, price=${data.price}, photos=${data.photos.length}`
-  )
 
   return data
 }

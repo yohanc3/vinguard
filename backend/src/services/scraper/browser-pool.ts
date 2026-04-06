@@ -8,7 +8,6 @@ const activePages = new Set<Page>()
 
 export async function getBrowser(): Promise<Browser> {
   if (!browser) {
-    console.log("[BrowserPool] Launching browser...")
     browser = await chromium.launch({
       headless: true,
       args: [
@@ -19,7 +18,6 @@ export async function getBrowser(): Promise<Browser> {
         "--disable-features=VizDisplayCompositor",
       ],
     })
-    console.log("[BrowserPool] Browser launched")
   }
   return browser
 }
@@ -53,7 +51,6 @@ export async function acquirePage(): Promise<Page> {
   const page = await ctx.newPage()
   activePages.add(page)
 
-  console.log(`[BrowserPool] Page acquired (${activePages.size}/${MAX_TABS} active)`)
   return page
 }
 
@@ -63,7 +60,6 @@ export async function releasePage(page: Page): Promise<void> {
   } catch {}
 
   activePages.delete(page)
-  console.log(`[BrowserPool] Page released (${activePages.size}/${MAX_TABS} active)`)
 }
 
 export function getActivePageCount(): number {

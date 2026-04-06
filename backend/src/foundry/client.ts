@@ -1,4 +1,4 @@
-import { Client, createClient, createPlatformClient } from "@osdk/client";
+import { Client, createClient } from "@osdk/client";
 import { createConfidentialOauthClient } from "@osdk/oauth";
 
 // Your OAuth2 client ID from Developer Console.
@@ -10,13 +10,6 @@ const scopes: string[] = [
   // "api:use-mediasets-read",
   // "api:use-mediasets-write",
 ];
-
-console.log("Initializing OSDK client with:", {
-    clientId,
-    url,
-    ontology: process.env.PALANTIR_ONTOLOGY_RID!,
-    client_secret: clientSecret.substring(0, 10) + "..." // Log partial secret for debugging
-});
 
 export const auth = createConfidentialOauthClient(clientId, clientSecret, url, scopes);
 export const client: Client = createClient(

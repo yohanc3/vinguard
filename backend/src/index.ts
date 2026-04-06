@@ -1,40 +1,42 @@
 import { trpcServer } from "@hono/trpc-server"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
-import { logger } from "hono/logger"
 import { appRouter } from "./trpc/root"
 import { TEST_CAR } from "../tests/state"
 import { extractFromSourcesParallel, searchDuckDuckGoPlain } from "./services/ddg-cheerio"
+import { logger } from "./logger"
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173"
 const port = Number(process.env.PORT) || 3000
 
 const app = new Hono()
 
-app.use(logger())
+app.use(async function accessLogSuccessOnly(c, next) {
+  const start = Date.now()
+  await next()
+  const ms = Date.now() - start
+  const status = c.res.status
+  if (status >= 200 && status < 300) {
+    logger.info({
+      message: "http_ok",
+      method: c.req.method,
+      path: c.req.path,
+      status,
+      ms,
+    })
+  }
+})
 
 app.get("/debug/ddg", async function debugDdG(c) {
   const q = c.req.query("q")
 
   if (!q) return c.json({ error: "Missing query param `q`" }, 400)
 
-  console.log("[debug.ddg] start", { q })
-
   const urls = await searchDuckDuckGoPlain(q)
   const top3 = urls.slice(0, 3)
 
-  console.log("[debug.ddg] top3", { count: top3.length, urls: top3 })
-
-  // Use a large limit for debugging so we can see where the target text appears.
   const maxCharsPerSource = 7000
   const extracted = await extractFromSourcesParallel(top3, 3, maxCharsPerSource)
-
-  console.log("[debug.ddg] extracted", {
-    count: extracted.length,
-    lenses: extracted.map(function (s) {
-      return { url: s.url, chars: s.extractedText.length }
-    }),
-  })
 
   return c.json({
     query: q,
@@ -64,10 +66,8 @@ app.use(
   }),
 )
 
-console.log(`API listening on http://localhost:${port} (CORS origin: ${corsOrigin})`)
-
 export default {
   port,
   fetch: app.fetch,
-  idleTimeout: 120,
+  idleTimeout: 210,
 }

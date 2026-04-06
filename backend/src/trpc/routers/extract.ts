@@ -6,8 +6,11 @@ import {
   extractListingData,
   pdfExtractedDataSchema,
   listingExtractedDataSchema,
+  PalantirLlmHttpError,
+  PalantirLlmResponseError,
 } from "../../services/llm"
 import { scrapeMarketplaceListing } from "../../services/marketplace"
+import { logger } from "../../logger"
 
 const combinedExtractedDataSchema = pdfExtractedDataSchema.merge(listingExtractedDataSchema)
 
@@ -16,10 +19,30 @@ export const extractRouter = router({
     .input(z.object({ text: z.string().min(50, "PDF text must be at least 50 characters") }))
     .output(pdfExtractedDataSchema)
     .mutation(async function extractFromPdfText({ input }) {
+      const start = Date.now()
       try {
         const extracted = await extractCarDataFromPdf(input.text)
         return extracted
       } catch (error) {
+        const ms = Date.now() - start
+        if (error instanceof PalantirLlmHttpError || error instanceof PalantirLlmResponseError) {
+          logger.error({
+            message: "extract.fromPdfText_llm",
+            ms,
+            errMessage: error.message,
+            responseBody: error.responseBody,
+            llmInput: error.llmInput,
+            textLength: input.text.length,
+          })
+        } else {
+          logger.error({
+            message: "extract.fromPdfText",
+            ms,
+            errMessage: error instanceof Error ? error.message : "unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            textLength: input.text.length,
+          })
+        }
         const message = error instanceof Error ? error.message : "Failed to extract PDF data"
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -32,10 +55,30 @@ export const extractRouter = router({
     .input(z.object({ text: z.string().min(20, "Listing text must be at least 20 characters") }))
     .output(listingExtractedDataSchema)
     .mutation(async function extractFromListingText({ input }) {
+      const start = Date.now()
       try {
         const extracted = await extractListingData(input.text)
         return extracted
       } catch (error) {
+        const ms = Date.now() - start
+        if (error instanceof PalantirLlmHttpError || error instanceof PalantirLlmResponseError) {
+          logger.error({
+            message: "extract.fromListingText_llm",
+            ms,
+            errMessage: error.message,
+            responseBody: error.responseBody,
+            llmInput: error.llmInput,
+            textLength: input.text.length,
+          })
+        } else {
+          logger.error({
+            message: "extract.fromListingText",
+            ms,
+            errMessage: error instanceof Error ? error.message : "unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            textLength: input.text.length,
+          })
+        }
         const message = error instanceof Error ? error.message : "Failed to extract listing data"
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -48,37 +91,57 @@ export const extractRouter = router({
     .input(z.object({ url: z.string().url("Must be a valid URL") }))
     .output(listingExtractedDataSchema)
     .mutation(async function extractFromListingUrl({ input }) {
-      console.log(`[extract.fromListingUrl] Starting scrape for URL: ${input.url}`)
-      
+      const start = Date.now()
+      const url = input.url
+
       let listing
       try {
-        listing = await scrapeMarketplaceListing(input.url)
-        console.log(`[extract.fromListingUrl] Scrape complete. Listing title: ${listing.marketplace_listing_title || "N/A"}`)
-        console.log(`[extract.fromListingUrl] Listing data: ${JSON.stringify(listing, null, 2)}...`)
+        listing = await scrapeMarketplaceListing(url)
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown scrape error"
-        const stack = error instanceof Error ? error.stack : undefined
-        console.error(`[extract.fromListingUrl] Scrape failed for URL: ${input.url}`)
-        console.error(`[extract.fromListingUrl] Error: ${message}`)
-        if (stack) console.error(`[extract.fromListingUrl] Stack: ${stack}`)
+        const ms = Date.now() - start
+        const errMessage = error instanceof Error ? error.message : "Unknown scrape error"
+        logger.error({
+          message: "extract.fromListingUrl_scrape",
+          ms,
+          errMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+          url,
+        })
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: `Scrape failed: ${message}`,
+          message: `Scrape failed: ${errMessage}`,
         })
       }
 
       try {
-        const extracted = await extractListingData(listing)
-        console.log(`[extract.fromListingUrl] Extraction complete: ${JSON.stringify(extracted)}`)
+        const extracted = await extractListingData(JSON.stringify(listing))
         return extracted
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown extraction error"
-        const stack = error instanceof Error ? error.stack : undefined
-        console.error(`[extract.fromListingUrl] LLM extraction failed: ${message}`)
-        if (stack) console.error(`[extract.fromListingUrl] Stack: ${stack}`)
+        const ms = Date.now() - start
+        if (error instanceof PalantirLlmHttpError || error instanceof PalantirLlmResponseError) {
+          logger.error({
+            message: "extract.fromListingUrl_llm",
+            ms,
+            errMessage: error.message,
+            responseBody: error.responseBody,
+            llmInput: error.llmInput,
+            url,
+            listingTitle: listing.marketplace_listing_title ?? null,
+          })
+        } else {
+          logger.error({
+            message: "extract.fromListingUrl",
+            ms,
+            errMessage: error instanceof Error ? error.message : "unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            url,
+            listingTitle: listing.marketplace_listing_title ?? null,
+          })
+        }
+        const errMsg = error instanceof Error ? error.message : "Unknown extraction error"
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: `LLM extraction failed: ${message}`,
+          message: `LLM extraction failed: ${errMsg}`,
         })
       }
     }),
@@ -93,25 +156,59 @@ export const extractRouter = router({
     )
     .output(combinedExtractedDataSchema)
     .mutation(async function extractCombined({ input }) {
-      const { pdfText, listingUrl, listingText } = input
+      const start = Date.now()
+      const inputSnapshot = {
+        hasPdf: Boolean(input.pdfText),
+        hasListingUrl: Boolean(input.listingUrl),
+        hasListingText: Boolean(input.listingText),
+      }
 
-      const results = await Promise.all([
-        pdfText ? extractCarDataFromPdf(pdfText) : Promise.resolve(null),
-        listingUrl
-          ? (async function () {
-              const listing = await scrapeMarketplaceListing(listingUrl)
-              return extractListingData(listing)
-            })()
-          : listingText
-            ? extractListingData(listingText)
-            : Promise.resolve(null),
-      ])
+      try {
+        const { pdfText, listingUrl, listingText } = input
 
-      const [pdfData, listingData] = results
+        const results = await Promise.all([
+          pdfText ? extractCarDataFromPdf(pdfText) : Promise.resolve(null),
+          listingUrl
+            ? (async function () {
+                const listing = await scrapeMarketplaceListing(listingUrl)
+                return extractListingData(JSON.stringify(listing))
+              })()
+            : listingText
+              ? extractListingData(listingText)
+              : Promise.resolve(null),
+        ])
 
-      return {
-        ...pdfData,
-        ...listingData,
+        const [pdfData, listingData] = results
+
+        return {
+          ...pdfData,
+          ...listingData,
+        }
+      } catch (error) {
+        const ms = Date.now() - start
+        if (error instanceof PalantirLlmHttpError || error instanceof PalantirLlmResponseError) {
+          logger.error({
+            message: "extract.combined_llm",
+            ms,
+            errMessage: error.message,
+            responseBody: error.responseBody,
+            llmInput: error.llmInput,
+            input: inputSnapshot,
+          })
+        } else {
+          logger.error({
+            message: "extract.combined",
+            ms,
+            errMessage: error instanceof Error ? error.message : "unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            input: inputSnapshot,
+          })
+        }
+        const message = error instanceof Error ? error.message : "Combined extraction failed"
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message,
+        })
       }
     }),
 })

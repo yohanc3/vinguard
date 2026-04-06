@@ -68,9 +68,10 @@ export const filesRelations = relations(files, ({ one }) => ({
   }),
 }));
 
-export const scrapeJobs = sqliteTable("scrape_jobs", {
+export const jobs = sqliteTable("jobs", {
   id: text("id").primaryKey(),
-  url: text("url").notNull(),
+  type: text("type").notNull(),
+  data: text("data"),
   status: text("status").default("pending"),
   result: text("result"),
   error: text("error"),
@@ -84,5 +85,5 @@ export type Car = typeof cars.$inferSelect;
 export type NewCar = typeof cars.$inferInsert;
 export type File = typeof files.$inferSelect;
 export type NewFile = typeof files.$inferInsert;
-export type ScrapeJob = typeof scrapeJobs.$inferSelect;
-export type NewScrapeJob = typeof scrapeJobs.$inferInsert;
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;

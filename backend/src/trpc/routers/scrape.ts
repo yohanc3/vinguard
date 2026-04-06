@@ -1,13 +1,14 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { publicProcedure, router } from "../trpc"
-import { enqueueJob, getJob } from "../../services/scraper/scrape-queue"
+import { enqueueJob, getJob } from "../../services/scraper/job-queue"
+import { logger } from "../../logger"
 
 export const scrapeRouter = router({
   startScrape: publicProcedure
     .input(z.object({ url: z.string().url() }))
     .mutation(function startScrape({ input }) {
-      const jobId = enqueueJob(input.url)
+      const jobId = enqueueJob("scrape", { url: input.url })
       return { jobId }
     }),
 
@@ -17,12 +18,19 @@ export const scrapeRouter = router({
       const job = getJob(input.jobId)
 
       if (!job) {
+        logger.error({
+          message: "scrape.getScrapeStatus_not_found",
+          jobId: input.jobId,
+        })
         throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" })
       }
 
+      const data = job.data ? JSON.parse(job.data) : {}
+
       return {
         id: job.id,
-        url: job.url,
+        type: job.type,
+        url: data.url,
         status: job.status,
         result: job.result ? JSON.parse(job.result) : null,
         error: job.error,

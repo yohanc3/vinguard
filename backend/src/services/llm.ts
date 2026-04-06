@@ -1,12 +1,43 @@
 import { z } from "zod"
-import { MarketplaceListing } from "./marketplace"
-import { text } from "node:stream/consumers"
 
 const PALANTIR_URL = process.env.PALANTIR_FOUNDRY_API_URL
 const ONTOLOGY_RID = process.env.PALANTIR_ONTOLOGY_RID
 const API_KEY = process.env.PALANTIR_AIP_API_KEY
 
 const queryUrl = `${PALANTIR_URL}/api/v2/ontologies/${ONTOLOGY_RID}/queries/chatCompletion/execute`
+
+export type PalantirLlmRequestParams = {
+  systemContent: string
+  userContent: string
+  jsonResponseFormat?: string
+  jsonResponseFormatInstructions?: string
+}
+
+export class PalantirLlmHttpError extends Error {
+    status: number
+    responseBody: string
+    llmInput: PalantirLlmRequestParams
+
+    constructor(message: string, status: number, responseBody: string, llmInput: PalantirLlmRequestParams) {
+        super(message)
+        this.name = "PalantirLlmHttpError"
+        this.status = status
+        this.responseBody = responseBody
+        this.llmInput = llmInput
+    }
+}
+
+export class PalantirLlmResponseError extends Error {
+    responseBody: string
+    llmInput: PalantirLlmRequestParams
+
+    constructor(message: string, responseBody: string, llmInput: PalantirLlmRequestParams) {
+        super(message)
+        this.name = "PalantirLlmResponseError"
+        this.responseBody = responseBody
+        this.llmInput = llmInput
+    }
+}
 
 export const pdfExtractedDataSchema = z.object({
     vin: z.string().nullable().optional(),
@@ -39,17 +70,11 @@ export const listingExtractedDataSchema = z.object({
 export type PdfExtractedData = z.infer<typeof pdfExtractedDataSchema>
 export type ListingExtractedData = z.infer<typeof listingExtractedDataSchema>
 
-export async function callPalantirLLM(params: {
-    systemContent: string
-    userContent: string
-    jsonResponseFormat?: string
-    jsonResponseFormatInstructions?: string
-}): Promise<string> {
+export async function callPalantirLLM(params: PalantirLlmRequestParams): Promise<string> {
     if (!API_KEY) {
         throw new Error("PALANTIR_AIP_API_KEY is not configured")
     }
-    
-    console.log("api key", API_KEY, "queryurl", queryUrl)
+
     const response = await fetch(queryUrl, {
         method: "POST",
         headers: {
@@ -59,31 +84,45 @@ export async function callPalantirLLM(params: {
         body: JSON.stringify({ parameters: params }),
     })
 
-    console.log("response", response)
-
     if (!response.ok) {
         const errorText = await response.text()
-        console.log("text", errorText)
-        throw new Error(`Palantir LLM API error: ${errorText}`)
+        throw new PalantirLlmHttpError(
+            `Palantir LLM API error: ${response.status}`,
+            response.status,
+            errorText,
+            params,
+        )
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as Record<string, unknown>
 
-    console.log("response from llm raw: ", JSON.stringify(data, null, 2))
-
-    // Palantir returns { value: "stringified json with response field" }
     if (!data.value) {
-        throw new Error(`Palantir LLM returned no value: ${JSON.stringify(data)}`)
+        throw new PalantirLlmResponseError(
+            "Palantir LLM returned no value",
+            JSON.stringify(data),
+            params,
+        )
     }
 
-    // Parse the stringified value
-    const valueObj = typeof data.value === "string" ? JSON.parse(data.value) : data.value
+    let valueObj: Record<string, unknown>
+    try {
+        valueObj = typeof data.value === "string" ? JSON.parse(data.value) as Record<string, unknown> : data.value as Record<string, unknown>
+    } catch {
+        throw new PalantirLlmResponseError(
+            "Palantir LLM value was not valid JSON",
+            String(data.value),
+            params,
+        )
+    }
 
     if (typeof valueObj.response !== "string") {
-        throw new Error(`Palantir LLM returned unexpected format: ${JSON.stringify(data)}`)
+        throw new PalantirLlmResponseError(
+            "Palantir LLM returned unexpected format",
+            JSON.stringify(data),
+            params,
+        )
     }
 
-    // The response might be wrapped in markdown code blocks, extract the JSON
     let responseText = valueObj.response
     const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (jsonMatch) {
@@ -136,25 +175,24 @@ const LISTING_EXTRACTION_INSTRUCTIONS = `Extract the following from the marketpl
 Return null for any field not found.`
 
 export async function extractCarDataFromPdf(pdfText: string): Promise<PdfExtractedData> {
-    const response = await callPalantirLLM({
+    const llmParams: PalantirLlmRequestParams = {
         systemContent: PDF_EXTRACTION_SYSTEM,
         userContent: `Extract vehicle data from this report:\n\n${pdfText}`,
         jsonResponseFormat: PDF_EXTRACTION_FORMAT,
-    })
-
+    }
+    const response = await callPalantirLLM(llmParams)
     const parsed = JSON.parse(response)
     return pdfExtractedDataSchema.parse(parsed)
 }
 
 export async function extractListingData(listingText: string): Promise<ListingExtractedData> {
-
-    const response = await callPalantirLLM({
+    const llmParams: PalantirLlmRequestParams = {
         systemContent: LISTING_EXTRACTION_SYSTEM,
         userContent: `Extract listing data from this marketplace listing:\n\n${JSON.stringify(listingText)}`,
         jsonResponseFormat: LISTING_EXTRACTION_FORMAT,
         jsonResponseFormatInstructions: LISTING_EXTRACTION_INSTRUCTIONS,
-    })
-
+    }
+    const response = await callPalantirLLM(llmParams)
     const parsed = JSON.parse(response)
     return listingExtractedDataSchema.parse(parsed)
 }

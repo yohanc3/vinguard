@@ -1,6 +1,9 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { publicProcedure, router } from "../trpc"
+import { enqueueJob } from "../../services/scraper/job-queue"
+import { extractCarDataFromPdf, extractListingData, PalantirLlmHttpError, PalantirLlmResponseError } from "../../services/llm"
+import { logger } from "../../logger"
 
 const PALANTIR_URL = process.env.PALANTIR_FOUNDRY_API_URL
 const ONTOLOGY_RID = process.env.PALANTIR_ONTOLOGY_RID
@@ -24,12 +27,10 @@ const chatHistoryEntrySchema = z.object({
 })
 
 const carSchema = z.object({
-    // Palantir internal fields
     __primaryKey: z.string().optional(),
     __rid: z.string().optional(),
     __apiName: z.string().optional(),
     __title: z.string().optional(),
-    // Car fields - all optional
     id: z.string().optional(),
     userId: z.string().optional(),
     chatHistory: z.array(chatHistoryEntrySchema).optional(),
@@ -47,6 +48,7 @@ const carSchema = z.object({
     listingMileage: z.string().optional(),
     listingDetails: z.array(z.string()).optional(),
     listingPictures: z.array(z.string()).optional(),
+    marketplaceListing: z.string().optional(),
     odometerReadings: z.array(z.number()).optional(),
     numberOfPreviousOwners: z.number().optional(),
     stateOfRegistration: z.string().optional(),
@@ -56,6 +58,7 @@ const carSchema = z.object({
     fairMarketValueHigh: z.number().optional(),
     fairMarketValueLow: z.number().optional(),
     carReport: z.string().optional(),
+    vehicleAnalysis: z.string().optional(),
 })
 
 const carInputSchema = z.object({
@@ -77,6 +80,7 @@ const carInputSchema = z.object({
     listingMileage: z.string().optional(),
     listingDetails: z.array(z.string()).optional(),
     listingPictures: z.array(z.string()).optional(),
+    marketplaceListing: z.string().optional(),
     odometerReadings: z.array(z.number()).optional(),
     numberOfPreviousOwners: z.number().optional(),
     stateOfRegistration: z.string().optional(),
@@ -86,6 +90,7 @@ const carInputSchema = z.object({
     fairMarketValueHigh: z.number().optional(),
     fairMarketValueLow: z.number().optional(),
     carReport: z.string().optional(),
+    vehicleAnalysis: z.string().optional(),
 })
 
 const listResponseSchema = z.object({
@@ -101,10 +106,15 @@ export const carsRouter = router({
         })
 
         if (!res.ok) {
-            const errorText = await res.text()
+            const responseBody = await res.text()
+            logger.error({
+                message: "cars.list",
+                httpStatus: res.status,
+                responseBody,
+            })
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: `Failed to fetch cars: ${errorText}`,
+                message: `Failed to fetch cars: ${responseBody}`,
             })
         }
 
@@ -124,13 +134,19 @@ export const carsRouter = router({
             })
 
             if (!res.ok) {
-                const errorText = await res.text()
+                const responseBody = await res.text()
+                logger.error({
+                    message: "cars.getById",
+                    carId: input.id,
+                    httpStatus: res.status,
+                    responseBody,
+                })
                 if (res.status === 404) {
                     throw new TRPCError({ code: "NOT_FOUND", message: "Car not found" })
                 }
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Failed to fetch car: ${errorText}`,
+                    message: `Failed to fetch car: ${responseBody}`,
                 })
             }
 
@@ -148,7 +164,6 @@ export const carsRouter = router({
     create: publicProcedure
         .input(carInputSchema)
         .mutation(async function createCar({ input }) {
-            console.log("input", input)
             const res = await fetch(`${baseUrl}/actions/create-cars/apply`, {
                 method: "POST",
                 headers: getHeaders(),
@@ -156,14 +171,26 @@ export const carsRouter = router({
             })
 
             if (!res.ok) {
-                const errorText = await res.text()
+                const responseBody = await res.text()
+                logger.error({
+                    message: "cars.create",
+                    httpStatus: res.status,
+                    responseBody,
+                    carId: input.id,
+                    hasVin: Boolean(input.vin),
+                })
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Failed to create car: ${errorText}`,
+                    message: `Failed to create car: ${responseBody}`,
                 })
             }
 
             const json = await res.json()
+
+            if (input.id) {
+                enqueueJob("generate_analysis", { carId: input.id })
+            }
+
             return json
         }),
 
@@ -172,7 +199,6 @@ export const carsRouter = router({
         .mutation(async function updateCar({ input }) {
             const { id, ...data } = input
 
-            console.log("edit id", id, "edit data", input)
             const res = await fetch(`${baseUrl}/actions/edit-cars/apply`, {
                 method: "POST",
                 headers: getHeaders(),
@@ -180,15 +206,20 @@ export const carsRouter = router({
             })
 
             if (!res.ok) {
-                const errorText = await res.text()
+                const responseBody = await res.text()
+                logger.error({
+                    message: "cars.update",
+                    carId: id,
+                    httpStatus: res.status,
+                    responseBody,
+                })
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Failed to update car: ${errorText}`,
+                    message: `Failed to update car: ${responseBody}`,
                 })
             }
 
             const json = await res.json()
-            console.log("result", JSON.stringify(json))
             return json
         }),
 
@@ -202,14 +233,191 @@ export const carsRouter = router({
             })
 
             if (!res.ok) {
-                const errorText = await res.text()
+                const responseBody = await res.text()
+                logger.error({
+                    message: "cars.delete",
+                    carId: input.id,
+                    httpStatus: res.status,
+                    responseBody,
+                })
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: `Failed to delete car: ${errorText}`,
+                    message: `Failed to delete car: ${responseBody}`,
                 })
             }
 
             const json = await res.json()
             return json
+        }),
+
+    generateAnalysis: publicProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(function generateAnalysis({ input }) {
+            const jobId = enqueueJob("generate_analysis", { carId: input.id })
+            return { jobId }
+        }),
+
+    updateAnalysis: publicProcedure
+        .input(z.object({
+            id: z.string(),
+            vehicleAnalysis: z.string(),
+        }))
+        .mutation(async function updateAnalysis({ input }) {
+            const res = await fetch(`${baseUrl}/actions/edit-cars/apply`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    parameters: {
+                        cars: input.id,
+                        vehicleAnalysis: input.vehicleAnalysis,
+                    },
+                }),
+            })
+
+            if (!res.ok) {
+                const responseBody = await res.text()
+                logger.error({
+                    message: "cars.updateAnalysis",
+                    carId: input.id,
+                    httpStatus: res.status,
+                    responseBody,
+                    analysisLength: input.vehicleAnalysis.length,
+                })
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: `Failed to update analysis: ${responseBody}`,
+                })
+            }
+
+            return { success: true }
+        }),
+
+    createReport: publicProcedure
+        .input(z.object({
+            marketplaceListing: z.string().url(),
+            scrapeResult: z.object({
+                miles: z.string().nullable(),
+                price: z.string().nullable(),
+                photos: z.array(z.string()),
+                details: z.string().nullable(),
+            }),
+            carfaxText: z.string(),
+            carReportKey: z.string(),
+        }))
+        .mutation(async function createReport({ input }) {
+            const carId = crypto.randomUUID()
+
+            const createRes = await fetch(`${baseUrl}/actions/create-cars/apply`, {
+                method: "POST",
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    parameters: {
+                        id: carId,
+                        carReport: input.carReportKey,
+                        marketplaceListing: input.marketplaceListing,
+                    },
+                }),
+            })
+
+            if (!createRes.ok) {
+                const responseBody = await createRes.text()
+                logger.error({
+                    message: "cars.createReport_create_palantir",
+                    carId,
+                    httpStatus: createRes.status,
+                    responseBody,
+                    marketplaceListing: input.marketplaceListing,
+                    carReportKey: input.carReportKey,
+                })
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: `Failed to create car: ${responseBody}`,
+                })
+            }
+
+            const jobId = enqueueJob("generate_analysis", {
+                carId,
+                scrapeResult: input.scrapeResult,
+                carfaxText: input.carfaxText,
+                marketplaceListing: input.marketplaceListing,
+            })
+
+            void (async function finalizeCreateReportListing() {
+                const asyncStart = Date.now()
+                try {
+                    const [pdfData, listingData] = await Promise.all([
+                        extractCarDataFromPdf(input.carfaxText),
+                        extractListingData(JSON.stringify(input.scrapeResult)),
+                    ])
+
+                    const updateRes = await fetch(`${baseUrl}/actions/edit-cars/apply`, {
+                        method: "POST",
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                            parameters: {
+                                cars: carId,
+                                ...pdfData,
+                                ...listingData,
+                                listingPictures: input.scrapeResult.photos,
+                                marketplaceListing: input.marketplaceListing,
+                            },
+                        }),
+                    })
+
+                    if (!updateRes.ok) {
+                        const responseBody = await updateRes.text()
+                        logger.error({
+                            message: "cars.createReport_finalize_palantir",
+                            carId,
+                            httpStatus: updateRes.status,
+                            responseBody,
+                            ms: Date.now() - asyncStart,
+                            marketplaceListing: input.marketplaceListing,
+                            scrapePhotoCount: input.scrapeResult.photos.length,
+                            carfaxChars: input.carfaxText.length,
+                        })
+                        return
+                    }
+                } catch (err) {
+                    if (err instanceof PalantirLlmHttpError) {
+                        logger.error({
+                            message: "cars.createReport_finalize_llm_http",
+                            carId,
+                            ms: Date.now() - asyncStart,
+                            errMessage: err.message,
+                            responseBody: err.responseBody,
+                            llmInput: err.llmInput,
+                            marketplaceListing: input.marketplaceListing,
+                            scrapePhotoCount: input.scrapeResult.photos.length,
+                            carfaxChars: input.carfaxText.length,
+                        })
+                    } else if (err instanceof PalantirLlmResponseError) {
+                        logger.error({
+                            message: "cars.createReport_finalize_llm_response",
+                            carId,
+                            ms: Date.now() - asyncStart,
+                            errMessage: err.message,
+                            responseBody: err.responseBody,
+                            llmInput: err.llmInput,
+                            marketplaceListing: input.marketplaceListing,
+                            scrapePhotoCount: input.scrapeResult.photos.length,
+                            carfaxChars: input.carfaxText.length,
+                        })
+                    } else {
+                        logger.error({
+                            message: "cars.createReport_finalize",
+                            carId,
+                            ms: Date.now() - asyncStart,
+                            errMessage: err instanceof Error ? err.message : "unknown",
+                            stack: err instanceof Error ? err.stack : undefined,
+                            marketplaceListing: input.marketplaceListing,
+                            scrapePhotoCount: input.scrapeResult.photos.length,
+                            carfaxChars: input.carfaxText.length,
+                        })
+                    }
+                }
+            })()
+
+            return { carId, analysisJobId: jobId }
         }),
 })

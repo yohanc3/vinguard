@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm"
 import { publicProcedure, router } from "../trpc"
 import { db } from "../../db/db"
 import { users } from "../../db/schema"
+import { logger } from "../../logger"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -21,15 +22,29 @@ export const authRouter = router({
 
       const existingUser = await db.select().from(users).where(eq(users.email, email)).get()
       if (existingUser) {
+        logger.error({
+          message: "auth.register_conflict",
+          email,
+        })
         throw new TRPCError({ code: "CONFLICT", message: "User already exists" })
       }
 
       const hashedPassword = await Bun.password.hash(password)
 
-      const result = await db.insert(users).values({
-        email,
-        password: hashedPassword,
-      }).returning()
+      let result
+      try {
+        result = await db.insert(users).values({
+          email,
+          password: hashedPassword,
+        }).returning()
+      } catch (err) {
+        logger.error({
+          message: "auth.register_insert_failed",
+          email,
+          errMessage: err instanceof Error ? err.message : "unknown",
+        })
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Registration failed" })
+      }
 
       const user = result[0]
       const payload = {
@@ -52,11 +67,21 @@ export const authRouter = router({
 
       const user = await db.select().from(users).where(eq(users.email, email)).get()
       if (!user) {
+        logger.error({
+          message: "auth.login_failed",
+          reason: "unknown_user",
+          email,
+        })
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" })
       }
 
       const isValidPassword = await Bun.password.verify(password, user.password)
       if (!isValidPassword) {
+        logger.error({
+          message: "auth.login_failed",
+          reason: "bad_password",
+          email,
+        })
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" })
       }
 
@@ -86,11 +111,22 @@ export const authRouter = router({
           .get()
 
         if (!user) {
+          logger.error({
+            message: "auth.me_not_found",
+            sub: payload.sub,
+          })
           throw new TRPCError({ code: "NOT_FOUND", message: "User not found" })
         }
 
         return { id: user.id, email: user.email }
-      } catch {
+      } catch (err) {
+        if (err instanceof TRPCError) {
+          throw err
+        }
+        logger.error({
+          message: "auth.me_invalid_token",
+          errMessage: err instanceof Error ? err.message : "unknown",
+        })
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid token" })
       }
     }),
