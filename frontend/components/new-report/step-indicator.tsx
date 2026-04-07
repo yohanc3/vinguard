@@ -27,10 +27,10 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
                   status === "complete"
-                    ? "bg-emerald-500 border-emerald-500 text-zinc-900"
+                    ? "bg-emerald-500 border-emerald-500 text-white"
                     : status === "current"
-                    ? "bg-background border-emerald-500 text-emerald-400"
-                    : "bg-background border-zinc-700 text-muted-foreground"
+                    ? "bg-background border-emerald-500 text-emerald-600"
+                    : "bg-background border-border text-muted-foreground"
                 }`}
               >
                 {status === "complete" ? (
@@ -52,7 +52,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
             {index < steps.length - 1 && (
               <div
                 className={`flex-1 h-0.5 mx-4 ${
-                  status === "complete" ? "bg-emerald-500" : "bg-zinc-800"
+                  status === "complete" ? "bg-emerald-500" : "bg-border"
                 }`}
               />
             )}
