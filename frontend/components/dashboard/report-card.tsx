@@ -26,7 +26,7 @@ interface ReportCardProps {
 export function ReportCard({ report, onClick }: ReportCardProps) {
   return (
     <Card
-      className="bg-card/50 border-border hover:border-zinc-600 transition-all duration-300 cursor-pointer group overflow-hidden"
+      className="bg-card/50 border-border hover:border-primary/50 transition-all duration-300 cursor-pointer group overflow-hidden"
       onClick={onClick}
     >
       <div className="flex">
@@ -42,7 +42,7 @@ export function ReportCard({ report, onClick }: ReportCardProps) {
         <div className="flex-1 p-4">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h3 className="font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
+              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                 {report.year} {report.make} {report.model}
               </h3>
               <p className="text-xs text-muted-foreground">{report.trim}</p>
@@ -54,11 +54,11 @@ export function ReportCard({ report, onClick }: ReportCardProps) {
             {report.vin}
           </p>
 
-          <p className="text-sm text-zinc-400 mb-3 line-clamp-1">
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-1">
             {report.redFlags > 0 ? (
               <span className="text-rose-400">{report.redFlags} Red Flags found</span>
             ) : (
-              <span className="text-emerald-400">{report.summary}</span>
+              <span className="text-primary">{report.summary}</span>
             )}
           </p>
 
@@ -73,7 +73,7 @@ export function ReportCard({ report, onClick }: ReportCardProps) {
                 {report.lastUpdated}
               </span>
             </div>
-            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
           </div>
         </div>
       </div>
