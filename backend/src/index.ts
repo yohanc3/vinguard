@@ -27,29 +27,6 @@ app.use(async function accessLogSuccessOnly(c, next) {
   }
 })
 
-app.get("/debug/ddg", async function debugDdG(c) {
-  const q = c.req.query("q")
-
-  if (!q) return c.json({ error: "Missing query param `q`" }, 400)
-
-  const urls = await searchDuckDuckGoPlain(q)
-  const top3 = urls.slice(0, 3)
-
-  const maxCharsPerSource = 7000
-  const extracted = await extractFromSourcesParallel(top3, 3, maxCharsPerSource)
-
-  return c.json({
-    query: q,
-    results: extracted.map(function (s) {
-      return {
-        url: s.url,
-        extractedText: s.extractedText,
-        snippet: s.extractedText.slice(0, 600),
-      }
-    }),
-  })
-})
-
 app.use(
   "/*",
   cors({
@@ -66,8 +43,8 @@ app.use(
   }),
 )
 
-export default {
+Bun.serve({
   port,
   fetch: app.fetch,
   idleTimeout: 210,
-}
+})
