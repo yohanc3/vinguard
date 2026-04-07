@@ -2,12 +2,10 @@ import { trpcServer } from "@hono/trpc-server"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { appRouter } from "./trpc/root"
-import { TEST_CAR } from "../tests/state"
-import { extractFromSourcesParallel, searchDuckDuckGoPlain } from "./services/ddg-cheerio"
 import { logger } from "./logger"
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173"
-const port = Number(process.env.PORT) || 3000
+const port = Number(process.env.APP_PORT) || 3000
 
 const app = new Hono()
 

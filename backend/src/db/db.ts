@@ -7,7 +7,7 @@ const dbFile = process.env.DB_FILE_NAME ?? "database.sqlite"
 const sqlite = new Database(dbFile)
 const db = drizzle({ client: sqlite })
 
-const migrationsFolder = join(import.meta.dir, "../../drizzle")
+const migrationsFolder = "./drizzle"
 migrate(db, { migrationsFolder })
 
 export { db }
