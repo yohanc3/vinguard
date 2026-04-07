@@ -2,9 +2,6 @@
  * Test database setup and teardown utilities
  */
 
-import { Database } from "bun:sqlite"
-import { drizzle } from "drizzle-orm/bun-sqlite"
-import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 import { unlink } from "fs/promises"
 import { existsSync } from "fs"
 import { trpcServer } from "@hono/trpc-server"
@@ -27,18 +24,9 @@ export async function setupTestEnvironment() {
     await unlink(TEST_DB_PATH)
   }
 
-  // Set test database path
   process.env.DB_FILE_NAME = TEST_DB_PATH
 
-  // Create and migrate test database
-  const sqlite = new Database(TEST_DB_PATH)
-  const db = drizzle({ client: sqlite })
-  migrate(db, { migrationsFolder: "./drizzle" })
-  sqlite.close()
-
-  // Verify Palantir config
-
-  // Import app router after DB is set up (dynamic import)
+  // Import app after env is set (db module opens SQLite and runs migrations)
   const { appRouter } = await import("../src/trpc/root")
 
   // Create test app
