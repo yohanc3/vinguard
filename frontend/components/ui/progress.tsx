@@ -40,7 +40,7 @@ export function Progress({
           <span className="font-mono text-foreground">{Math.round(percentage)}%</span>
         </div>
       )}
-      <div className={cn("bg-zinc-800 rounded-full overflow-hidden", sizeStyles[size])}>
+      <div className={cn("bg-secondary rounded-full overflow-hidden", sizeStyles[size])}>
         <div
           className={cn("h-full transition-all duration-300", variantStyles[variant])}
           style={{ width: `${percentage}%` }}

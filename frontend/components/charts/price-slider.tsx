@@ -27,7 +27,7 @@ export function PriceSlider({
   return (
     <div className="space-y-2">
       <div className="relative h-8 mt-4">
-        <div className="absolute inset-x-0 top-3 h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="absolute inset-x-0 top-3 h-2 bg-secondary rounded-full overflow-hidden">
           <div
             className="absolute h-full bg-rose-500/30"
             style={{ left: "0%", width: `${getPosition(scamZone.max)}%` }}

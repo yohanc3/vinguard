@@ -27,12 +27,12 @@ export function AppLogo({ size = "md", showTagline = false }: AppLogoProps) {
   return (
     <div className="flex items-center gap-3">
       <div className={`bg-gradient-to-br from-emerald-400 to-emerald-600 ${containerSize} rounded-lg`}>
-        <Shield className={`${iconSize} text-zinc-900`} />
+        <Shield className={`${iconSize} text-white`} />
       </div>
       <div className="flex flex-col items-start">
         <span className={`${textSize} font-bold tracking-tight text-foreground`}>VINGUARD</span>
         {showTagline && (
-          <span className="text-[10px] tracking-[0.3em] text-emerald-400 uppercase">Security Protocol</span>
+          <span className="text-[10px] tracking-[0.3em] text-emerald-600 uppercase">Security Protocol</span>
         )}
       </div>
     </div>
