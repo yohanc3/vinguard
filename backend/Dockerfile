@@ -13,7 +13,8 @@ RUN bun install --production --verbose
 COPY . .
 
 # Run build
-RUN bun build --compile --minify --sourcemap ./src --outfile vinguard-backend 
+RUN bun build --compile --minify --sourcemap ./src --outfile vinguard-backend --external playwright --external playwright-core
+RUN bun build --compile --minify --sourcemap ./src/services/scraper/worker.ts --outfile vinguard-worker --external playwright --external playwright-core
 
 # Our applicaiton runner - we need playwright, so we install their runner
 FROM mcr.microsoft.com/playwright:v1.58.2-noble AS runner
@@ -34,6 +35,11 @@ EXPOSE ${APP_PORT}
 
 # Copy the compiled executable from the build stage
 COPY --from=build /app/vinguard-backend .
+COPY --from=build /app/vinguard-worker . 
 COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/node_modules ./node_modules
 
-ENTRYPOINT ["./vinguard-backend"]
+COPY start.sh .
+RUN chmod +x start.sh
+
+ENTRYPOINT ["./start.sh"]
