@@ -83,6 +83,9 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
     await emailLocator.fill(process.env.FACEBOOK_EMAIL!)
     await passwordLocator.fill(process.env.FACEBOOK_PASSWORD!)
 
+    const loginButton = page.getByRole('button', { name: 'Log In' })
+    await loginButton.click()
+
     const seeMore = page.locator("span", { hasText: "See more" }).last()
     const seeMoreVisible = await seeMore.isVisible().catch(() => false)
     if (seeMoreVisible) {
