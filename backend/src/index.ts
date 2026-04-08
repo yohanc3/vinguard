@@ -4,7 +4,8 @@ import { cors } from "hono/cors"
 import { appRouter } from "./trpc/root"
 import { logger } from "./logger"
 
-const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173"
+// decode all enabled origins at .env.production
+const corsOrigin = process.env.CORS_ORIGIN?.split(",") ?? "http://localhost:5173"
 const port = Number(process.env.APP_PORT) || 3000
 
 const app = new Hono()
@@ -29,6 +30,7 @@ app.use(
   "/*",
   cors({
     origin: corsOrigin,
+    credentials: true,
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }),
