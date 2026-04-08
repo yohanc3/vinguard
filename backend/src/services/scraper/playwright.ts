@@ -86,7 +86,7 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
     const loginButton = page.getByRole('button', { name: 'Log In' })
     await loginButton.click()
 
-    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(15000)
 
     const seeMore = page.locator("span", { hasText: "See more" }).last()
     const seeMoreVisible = await seeMore.isVisible().catch(() => false)
