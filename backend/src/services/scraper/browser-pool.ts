@@ -34,7 +34,7 @@ export async function getBrowser(verbose: boolean): Promise<Browser> {
         if (verbose) {
             logger.debug({
                 message: "scraper.browser_pool.launch_begin",
-                headless: true,
+                headless: false,
             })
         }
         browser = await chromium.launch({
