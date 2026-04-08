@@ -1,6 +1,6 @@
 #!/bin/sh
 
 ./vinguard-backend &
-./vinguard-worker &
+bun run src/services/scraper/worker.ts &
 wait
 
