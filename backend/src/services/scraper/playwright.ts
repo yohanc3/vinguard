@@ -55,6 +55,7 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
   if (verbose) {
     logger.debug({
       message: "scraper.playwright.goto_done",
+      pageContent: page.content(),
       ms: Date.now() - tGoto,
       httpStatus: response?.status() ?? null,
       finalUrlLength: page.url().length,
