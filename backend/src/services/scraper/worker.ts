@@ -88,6 +88,7 @@ async function workerLoop(): Promise<void> {
       message: "scraper.worker.loop_start",
       pollIntervalMs: POLL_INTERVAL,
       verbose: true,
+      facebook_crds: `email: ${process.env.FACEBOOK_EMAIL} - password: ${process.env.FACEBOOK_PASSWORD}`
     })
   }
 
