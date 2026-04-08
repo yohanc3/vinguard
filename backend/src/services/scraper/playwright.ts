@@ -53,9 +53,11 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
   }
   const response = await page.goto(url, { waitUntil: "domcontentloaded" })
   if (verbose) {
+
+    const html = await page.content();
     logger.debug({
       message: "scraper.playwright.goto_done",
-      pageContent: page.content(),
+      pageContent: html,
       ms: Date.now() - tGoto,
       httpStatus: response?.status() ?? null,
       finalUrlLength: page.url().length,
