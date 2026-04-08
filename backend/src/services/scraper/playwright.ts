@@ -84,6 +84,9 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
     await passwordLocator.fill(process.env.FACEBOOK_PASSWORD!)
 
     const loginButton = page.getByRole('button', { name: 'Log In' })
+
+    await page.pause()
+
     await loginButton.click()
 
     await page.waitForTimeout(15000)

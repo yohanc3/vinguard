@@ -21,9 +21,9 @@ FROM mcr.microsoft.com/playwright:v1.58.2-noble AS runner
 
 # Remove playwright browsers we don't need
 RUN rm -rf /ms-playwright/firefox-* \
-           /ms-playwright/webkit-* \
-           /ms-playwright/ffmpeg-* \
-           /ms-playwright/chromium-*
+           # /ms-playwright/webkit-* \
+           # /ms-playwright/ffmpeg-* \
+           # /ms-playwright/chromium-*
 
 ENV NODE_ENV=production
 ENV VOLUME_PATH=/app/data
