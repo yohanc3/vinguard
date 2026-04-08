@@ -7,23 +7,51 @@ import { logger } from "../../logger"
 const POLL_INTERVAL = 2000
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((res) => setTimeout(res, ms))
+  return new Promise(function scheduleSleep(res) {
+    setTimeout(res, ms)
+  })
 }
 
-async function processJob(job: Job): Promise<void> {
-  const data = JSON.parse(job.data || "{}")
+async function processJob(job: Job, verbose: boolean): Promise<void> {
+  const data = JSON.parse(job.data || "{}") as Record<string, unknown>
   const start = Date.now()
+
+  if (verbose) {
+    logger.debug({
+      message: "scraper.worker.job_process_begin",
+      jobId: job.id,
+      type: job.type,
+    })
+  }
 
   try {
     switch (job.type) {
       case "scrape": {
-        const result = await scrapeWithPlaywright(data.url)
-        updateJob(job.id, { status: "completed", result: JSON.stringify(result) })
+        const result = await scrapeWithPlaywright(data.url as string, verbose)
+        updateJob(job.id, { status: "completed", result: JSON.stringify(result) }, verbose)
+        if (verbose) {
+          logger.debug({
+            message: "scraper.worker.job_process_done",
+            jobId: job.id,
+            type: job.type,
+            ms: Date.now() - start,
+          })
+        }
         break
       }
       case "generate_analysis": {
-        await generateVehicleAnalysis(data)
-        updateJob(job.id, { status: "completed" })
+        await generateVehicleAnalysis(
+          data as unknown as Parameters<typeof generateVehicleAnalysis>[0],
+        )
+        updateJob(job.id, { status: "completed" }, verbose)
+        if (verbose) {
+          logger.debug({
+            message: "scraper.worker.job_process_done",
+            jobId: job.id,
+            type: job.type,
+            ms: Date.now() - start,
+          })
+        }
         break
       }
       default:
@@ -31,8 +59,17 @@ async function processJob(job: Job): Promise<void> {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
-    updateJob(job.id, { status: "failed", error: message })
+    updateJob(job.id, { status: "failed", error: message }, verbose)
     const ms = Date.now() - start
+    if (verbose) {
+      logger.debug({
+        message: "scraper.worker.job_process_error",
+        jobId: job.id,
+        type: job.type,
+        ms,
+        errMessage: message,
+      })
+    }
     logger.error({
       message: "worker.job_failed",
       jobId: job.id,
@@ -45,16 +82,34 @@ async function processJob(job: Job): Promise<void> {
 }
 
 async function workerLoop(): Promise<void> {
+  const verbose = process.env.VERBOSE === "true"
+  if (verbose) {
+    logger.debug({
+      message: "scraper.worker.loop_start",
+      pollIntervalMs: POLL_INTERVAL,
+      verbose: true,
+    })
+  }
+
   while (true) {
-    const job = claimNextJob()
+    const job = claimNextJob(verbose)
 
     if (!job) {
+      if (verbose) {
+        logger.debug({
+          message: "scraper.worker.poll_idle",
+          sleepMs: POLL_INTERVAL,
+        })
+      }
       await sleep(POLL_INTERVAL)
       continue
     }
 
-    await processJob(job)
+    await processJob(job, verbose)
 
+    if (verbose) {
+      logger.debug({ message: "scraper.worker.post_job_sleep", sleepMs: 100 })
+    }
     await sleep(100)
   }
 }

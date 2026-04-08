@@ -188,7 +188,7 @@ export const carsRouter = router({
             const json = await res.json()
 
             if (input.id) {
-                enqueueJob("generate_analysis", { carId: input.id })
+                enqueueJob("generate_analysis", { carId: input.id }, true)
             }
 
             return json
@@ -253,7 +253,7 @@ export const carsRouter = router({
     generateAnalysis: publicProcedure
         .input(z.object({ id: z.string() }))
         .mutation(function generateAnalysis({ input }) {
-            const jobId = enqueueJob("generate_analysis", { carId: input.id })
+            const jobId = enqueueJob("generate_analysis", { carId: input.id }, true)
             return { jobId }
         }),
 
@@ -340,7 +340,7 @@ export const carsRouter = router({
                 scrapeResult: input.scrapeResult,
                 carfaxText: input.carfaxText,
                 marketplaceListing: input.marketplaceListing,
-            })
+            }, true)
 
             void (async function finalizeCreateReportListing() {
                 const asyncStart = Date.now()

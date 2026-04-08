@@ -8,14 +8,14 @@ export const scrapeRouter = router({
   startScrape: publicProcedure
     .input(z.object({ url: z.string().url() }))
     .mutation(function startScrape({ input }) {
-      const jobId = enqueueJob("scrape", { url: input.url })
+      const jobId = enqueueJob("scrape", { url: input.url }, true)
       return { jobId }
     }),
 
   getScrapeStatus: publicProcedure
     .input(z.object({ jobId: z.string() }))
     .query(function getScrapeStatus({ input }) {
-      const job = getJob(input.jobId)
+      const job = getJob(input.jobId, true)
 
       if (!job) {
         logger.error({
