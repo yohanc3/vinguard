@@ -27,7 +27,7 @@ async function processJob(job: Job, verbose: boolean): Promise<void> {
   try {
     switch (job.type) {
       case "scrape": {
-        const result = await scrapeWithPlaywright(data.url as string, verbose)
+        const result = await scrapeWithPlaywright(data.url as string, verbose, job.id)
         updateJob(job.id, { status: "completed", result: JSON.stringify(result) }, verbose)
         if (verbose) {
           logger.debug({

@@ -26,6 +26,7 @@ RUN rm -rf /ms-playwright/firefox-* \
            /ms-playwright/chromium-*
 
 ENV NODE_ENV=production
+ENV VOLUME_PATH=/app/data
 
 WORKDIR /app
 
@@ -34,6 +35,7 @@ ENV APP_PORT=${BUILD_APP_PORT}
 EXPOSE ${APP_PORT}
 
 RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data/videos /app/data/traces && chmod 755 /app/data/videos /app/data/traces
 
 # Copy the compiled executable from the build stage
 COPY --from=build /app/vinguard-backend .

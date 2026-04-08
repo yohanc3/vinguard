@@ -53,11 +53,8 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
   }
   const response = await page.goto(url, { waitUntil: "domcontentloaded" })
   if (verbose) {
-
-    const html = await response?.text();
     logger.debug({
       message: "scraper.playwright.goto_done",
-      pageContent: html,
       ms: Date.now() - tGoto,
       httpStatus: response?.status() ?? null,
       finalUrlLength: page.url().length,
@@ -113,23 +110,28 @@ async function scrapeListingData(page: Page, url: string, verbose: boolean): Pro
       message: "scraper.playwright.dom_evaluate_done",
       ms: Date.now() - tEval,
       photoCount: data.photos.length,
-      hasMiles: data.miles,
-      hasPrice: data.price,
-      hasDetails: data.details,
+      hasMiles: Boolean(data.miles),
+      hasPrice: Boolean(data.price),
+      hasDetails: Boolean(data.details),
     })
   }
 
   return data
 }
 
-export async function scrapeWithPlaywright(url: string, verbose: boolean): Promise<ScrapedListing> {
+export async function scrapeWithPlaywright(
+  url: string,
+  verbose: boolean,
+  jobId?: string,
+): Promise<ScrapedListing> {
   const tRun = Date.now()
   const { host } = urlSummary(url)
   if (verbose) {
-    logger.debug({ message: "scraper.playwright.scrape_begin", host })
+    logger.debug({ message: "scraper.playwright.scrape_begin", host, jobId: jobId ?? null })
   }
 
-  const page = await acquirePage(verbose)
+  const sessionOpts = jobId !== undefined ? { jobId } : undefined
+  const page = await acquirePage(verbose, sessionOpts)
 
   try {
     const result = await scrapeListingData(page, url, verbose)
@@ -148,12 +150,12 @@ export async function scrapeWithPlaywright(url: string, verbose: boolean): Promi
         message: "scraper.playwright.scrape_error",
         ms: Date.now() - tRun,
         host,
-        errMessage: err,
-        errName: err,
+        errMessage: err instanceof Error ? err.message : "unknown",
+        errName: err instanceof Error ? err.name : "unknown",
       })
     }
     throw err
   } finally {
-    await releasePage(page, verbose)
+    await releasePage(page, verbose, sessionOpts)
   }
 }
