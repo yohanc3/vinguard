@@ -146,7 +146,7 @@ async function testListingExtraction() {
     return
   }
 
-  // Test with mock listing data (no Apify call)
+  // Test with mock listing data (LLM only)
   const mockListingText = `
     Title: 2022 Toyota Camry XSE - Excellent Condition
     Price: $29,500

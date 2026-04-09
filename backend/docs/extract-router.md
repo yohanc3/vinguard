@@ -1,8 +1,8 @@
 # Extract Router
 
-tRPC router for extracting vehicle data from PDFs and marketplace listings.
+tRPC router for extracting vehicle data from PDF text and raw listing text (LLM via Palantir).
 
-**Related docs:** [LLM Extraction](./llm-extraction.md) | [Marketplace Service](./marketplace-service.md)
+**Related docs:** [LLM Extraction](./llm-extraction.md)
 
 ## Location
 
@@ -24,7 +24,7 @@ Extract data from PDF text (CarFax-style reports).
 
 ### `extract.fromListingText`
 
-Extract data from marketplace listing text.
+Extract data from marketplace listing text (paste JSON or plain description).
 
 ```typescript
 // Input
@@ -34,29 +34,15 @@ Extract data from marketplace listing text.
 { listingMileage, listingDetails, listingPictures, listingPrice }
 ```
 
-### `extract.fromListingUrl`
-
-Scrape URL and extract listing data.
-
-```typescript
-// Input
-{ url: string }  // valid URL
-
-// Output: listingExtractedDataSchema
-```
-
-**Note:** Triggers Apify scrape (billed).
-
 ### `extract.combined`
 
-Extract from both PDF and listing in parallel.
+Extract from PDF and/or listing text in parallel. At least one of `pdfText` or `listingText` is required.
 
 ```typescript
 // Input
 {
-  pdfText?: string,      // PDF report text
-  listingUrl?: string,   // Marketplace URL (triggers scrape)
-  listingText?: string   // OR raw listing text
+  pdfText?: string,       // min 50 chars if present
+  listingText?: string,   // min 20 chars if present
 }
 
 // Output: merged pdfExtractedDataSchema + listingExtractedDataSchema
@@ -67,22 +53,17 @@ Extract from both PDF and listing in parallel.
 ```typescript
 const trpc = useTRPC()
 
-// PDF extraction
 const pdfMutation = useMutation(trpc.extract.fromPdfText.mutationOptions({}))
 const result = await pdfMutation.mutateAsync({ text: pdfText })
 
-// Listing extraction (from URL)
-const listingMutation = useMutation(trpc.extract.fromListingUrl.mutationOptions({}))
-const result = await listingMutation.mutateAsync({ url: listingUrl })
+const listingMutation = useMutation(trpc.extract.fromListingText.mutationOptions({}))
+const listing = await listingMutation.mutateAsync({ text: listingBody })
 ```
 
 ## How It Integrates
 
-This is the entry point for report creation:
+Used for ad-hoc extraction and tooling; the main report flow uses `cars.createReport` with listing fields + CarFax upload.
 
 ```
-Frontend ──▶ extract.combined() ──▶ cars.create() ──▶ Analysis Job
-                │                        │
-                ├── LLM Extraction       └── See Vehicle Analysis
-                └── Marketplace Scrape
+Frontend ──▶ extract.* ──▶ Palantir LLM (structured JSON)
 ```

@@ -2,7 +2,7 @@
 
 Extracts structured car data from text using Palantir AIP.
 
-**Related docs:** [Palantir LLM](./palantir-llm.md) | [Marketplace Service](./marketplace-service.md)
+**Related docs:** [Palantir LLM](./palantir-llm.md) | [Extract Router](./extract-router.md)
 
 ## Location
 

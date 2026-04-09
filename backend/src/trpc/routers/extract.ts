@@ -9,10 +9,21 @@ import {
   PalantirLlmHttpError,
   PalantirLlmResponseError,
 } from "../../services/llm"
-import { scrapeMarketplaceListing } from "../../services/marketplace"
 import { logger } from "../../logger"
 
 const combinedExtractedDataSchema = pdfExtractedDataSchema.merge(listingExtractedDataSchema)
+
+const combinedInputSchema = z
+  .object({
+    pdfText: z.string().min(50).optional(),
+    listingText: z.string().min(20).optional(),
+  })
+  .refine(
+    function hasAtLeastOneSource(data) {
+      return Boolean(data.pdfText) || Boolean(data.listingText)
+    },
+    { message: "Provide pdfText and/or listingText" },
+  )
 
 export const extractRouter = router({
   fromPdfText: publicProcedure
@@ -87,95 +98,22 @@ export const extractRouter = router({
       }
     }),
 
-  fromListingUrl: publicProcedure
-    .input(z.object({ url: z.string().url("Must be a valid URL") }))
-    .output(listingExtractedDataSchema)
-    .mutation(async function extractFromListingUrl({ input }) {
-      const start = Date.now()
-      const url = input.url
-
-      let listing
-      try {
-        listing = await scrapeMarketplaceListing(url)
-      } catch (error) {
-        const ms = Date.now() - start
-        const errMessage = error instanceof Error ? error.message : "Unknown scrape error"
-        logger.error({
-          message: "extract.fromListingUrl_scrape",
-          ms,
-          errMessage,
-          stack: error instanceof Error ? error.stack : undefined,
-          url,
-        })
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Scrape failed: ${errMessage}`,
-        })
-      }
-
-      try {
-        const extracted = await extractListingData(JSON.stringify(listing))
-        return extracted
-      } catch (error) {
-        const ms = Date.now() - start
-        if (error instanceof PalantirLlmHttpError || error instanceof PalantirLlmResponseError) {
-          logger.error({
-            message: "extract.fromListingUrl_llm",
-            ms,
-            errMessage: error.message,
-            responseBody: error.responseBody,
-            llmInput: error.llmInput,
-            url,
-            listingTitle: listing.marketplace_listing_title ?? null,
-          })
-        } else {
-          logger.error({
-            message: "extract.fromListingUrl",
-            ms,
-            errMessage: error instanceof Error ? error.message : "unknown",
-            stack: error instanceof Error ? error.stack : undefined,
-            url,
-            listingTitle: listing.marketplace_listing_title ?? null,
-          })
-        }
-        const errMsg = error instanceof Error ? error.message : "Unknown extraction error"
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `LLM extraction failed: ${errMsg}`,
-        })
-      }
-    }),
-
   combined: publicProcedure
-    .input(
-      z.object({
-        pdfText: z.string().min(50).optional(),
-        listingUrl: z.string().url().optional(),
-        listingText: z.string().min(20).optional(),
-      })
-    )
+    .input(combinedInputSchema)
     .output(combinedExtractedDataSchema)
     .mutation(async function extractCombined({ input }) {
       const start = Date.now()
       const inputSnapshot = {
         hasPdf: Boolean(input.pdfText),
-        hasListingUrl: Boolean(input.listingUrl),
         hasListingText: Boolean(input.listingText),
       }
 
       try {
-        const { pdfText, listingUrl, listingText } = input
+        const { pdfText, listingText } = input
 
         const results = await Promise.all([
           pdfText ? extractCarDataFromPdf(pdfText) : Promise.resolve(null),
-          listingUrl
-            ? (async function () {
-                const listing = await scrapeMarketplaceListing(listingUrl)
-                return extractListingData(JSON.stringify(listing))
-              })()
-            : listingText
-              ? extractListingData(listingText)
-              : Promise.resolve(null),
+          listingText ? extractListingData(listingText) : Promise.resolve(null),
         ])
 
         const [pdfData, listingData] = results
