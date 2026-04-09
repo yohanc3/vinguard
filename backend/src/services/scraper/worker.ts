@@ -1,5 +1,4 @@
 import { claimNextJob, updateJob } from "./job-queue"
-import { scrapeWithPlaywright } from "./playwright"
 import { generateVehicleAnalysis } from "../vehicle-analysis"
 import type { Job } from "../../db/schema"
 import { logger } from "../../logger"
@@ -26,19 +25,6 @@ async function processJob(job: Job, verbose: boolean): Promise<void> {
 
   try {
     switch (job.type) {
-      case "scrape": {
-        const result = await scrapeWithPlaywright(data.url as string, verbose, job.id)
-        updateJob(job.id, { status: "completed", result: JSON.stringify(result) }, verbose)
-        if (verbose) {
-          logger.debug({
-            message: "scraper.worker.job_process_done",
-            jobId: job.id,
-            type: job.type,
-            ms: Date.now() - start,
-          })
-        }
-        break
-      }
       case "generate_analysis": {
         await generateVehicleAnalysis(
           data as unknown as Parameters<typeof generateVehicleAnalysis>[0],

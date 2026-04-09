@@ -2,12 +2,8 @@
  * Main Test Runner
  * 
  * Orchestrates all test files in sequential order:
- * 1. Setup test database
- * 2. Auth tests (register, login, validate token)
- * 3. Cars CRUD tests (create, fetch, update, verify, delete)
- * 4. LLM extraction tests (PDF, listing)
- * 5. Scraper tests (Playwright)
- * 6. Cleanup test database
+ * - Setup / teardown: test database (beforeAll / afterAll)
+ * - Auth, Cars CRUD (Palantir), LLM extraction, Chat (DDG + Palantir)
  * 
  * Run with: bun test tests/main.test.ts
  */
@@ -18,7 +14,6 @@ import { testState } from "./state"
 import { runAuthTests } from "./auth"
 import { runCarsTests } from "./cars"
 import { runLlmTests } from "./llm"
-import { runScraperTests } from "./scraper"
 import { runChatTests } from "./chat"
 
 describe("Vinguard Backend", function testSuite() {
@@ -42,11 +37,7 @@ describe("Vinguard Backend", function testSuite() {
     await runLlmTests()
   }, 60000)
 
-  test("4. Scraper (Playwright)", async function scraperTests() {
-    await runScraperTests()
-  }, 60000)
-
-  test("5. Chat (DDG + Palantir)", async function chatTests() {
+  test("4. Chat (DDG + Palantir)", async function chatTests() {
     await runChatTests()
   }, 120000)
 })

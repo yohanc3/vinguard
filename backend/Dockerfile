@@ -16,7 +16,7 @@ COPY . .
 RUN bun build --compile --minify --sourcemap ./src --outfile vinguard-backend 
 RUN bun build --compile --minify --sourcemap ./src/services/scraper/worker.ts --outfile vinguard-worker 
 
-# Our applicaiton runner - we need playwright, so we install their runner
+# API + worker: Bun runs worker script; backend binary serves tRPC
 FROM gcr.io/distroless/static-debian12 AS runner
 
 ENV NODE_ENV=production
