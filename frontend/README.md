@@ -1,6 +1,8 @@
 # Vinguard frontend
 
-[Vite](https://vite.dev) + [React 19](https://react.dev) + [Tailwind CSS v4](https://tailwindcss.com) + [tRPC](https://trpc.io) (via TanStack Query). The app covers auth, dashboard, new report (manual listing fields + CarFax PDF), and report view (PDF sidebar, Vinguard analysis, chat).
+The frontend handles all user interactions, such as: auth, dashboard actions, creating new reports (manual listing fields + Vehicle Report PDF), and report view (Vehicle Report view, Vinguard analysis, AI chat).
+
+For the tech stack, we have [Vite](https://vite.dev) + [React](https://react.dev) + [Tailwind CSS](https://tailwindcss.com) + [tRPC](https://trpc.io) (via TanStack Query).
 
 ## Requirements
 
@@ -23,7 +25,7 @@ Vite only exposes variables prefixed with `VITE_`. For production builds, set th
 ```sh
 bun install
 
-# Dev server (HMR)
+# Dev server
 bun run dev
 
 # Typecheck + production build
