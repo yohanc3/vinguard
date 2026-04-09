@@ -9,27 +9,27 @@
                                 │ tRPC
 ┌───────────────────────────────▼─────────────────────────────────────┐
 │                         Backend API                                  │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
-│  │  cars   │  │  chat   │  │ extract │  │ scrape  │  │  files  │  │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  │
-└───────┼────────────┼────────────┼────────────┼────────────┼─────────┘
-        │            │            │            │            │
-┌───────▼────────────▼────────────▼────────────▼────────────▼─────────┐
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐               │
+│  │  cars   │  │  chat   │  │ extract │  │  files  │               │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘               │
+└───────┼────────────┼────────────┼────────────┼─────────────────────┘
+        │            │            │            │
+┌───────▼────────────▼────────────▼────────────▼─────────────────────┐
 │                          Services                                    │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐    │
-│  │  Palantir  │  │ Web Search │  │ Marketplace│  │     R2     │    │
-│  │  (LLM/DB)  │  │  (DDG)     │  │  (Apify)   │  │  (Files)   │    │
-│  └────────────┘  └────────────┘  └────────────┘  └────────────┘    │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐                   │
+│  │  Palantir  │  │ Web Search │  │     R2     │                   │
+│  │  (LLM/DB)  │  │  (DDG)     │  │  (Files)   │                   │
+│  └────────────┘  └────────────┘  └────────────┘                   │
 └─────────────────────────────────────────────────────────────────────┘
         │
         │ Job Queue
         ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          Worker                                      │
-│  ┌────────────────────┐  ┌────────────────────────────────┐        │
-│  │    Scrape Jobs     │  │    Vehicle Analysis Jobs       │        │
-│  │  (Playwright)      │  │  (LLM + Web Search)            │        │
-│  └────────────────────┘  └────────────────────────────────┘        │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │              Vehicle Analysis (generate_analysis)           │    │
+│  │              LLM + Web Search                                 │    │
+│  └────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,7 +42,6 @@
 | [Palantir API Gateway](./palantir-api-gateway.md) | Car CRUD operations via Palantir |
 | [Palantir LLM](./palantir-llm.md) | LLM calls via Palantir AIP |
 | [Web Search](./web-search.md) | DuckDuckGo search + content extraction |
-| [Marketplace Service](./marketplace-service.md) | Facebook Marketplace scraping |
 
 ### Features
 
@@ -51,6 +50,7 @@
 | [Vehicle Analysis](./vehicle-analysis.md) | AI-powered deal verdicts and checklists |
 | [Chat](./chat.md) | Real-time AI chat with web search |
 | [LLM Extraction](./llm-extraction.md) | Extract data from PDFs and listings |
+| [Extract Router](./extract-router.md) | tRPC procedures for PDF/listing text extraction |
 
 ### Infrastructure
 
@@ -64,12 +64,10 @@
 ### Report Creation
 
 ```
-1. User submits URL + PDF
-2. extract.combined() extracts data from both
-3. cars.create() saves to Palantir
-4. Job queued: generate_analysis
-5. Worker runs vehicle analysis
-6. Analysis saved to car.vehicleAnalysis
+1. User enters listing fields + uploads CarFax PDF
+2. cars.createReport() saves car, runs LLM extraction, enqueues generate_analysis
+3. Worker runs vehicle analysis
+4. Analysis saved to car.vehicleAnalysis
 ```
 
 ### Chat Message
@@ -84,16 +82,6 @@
 7. Chat history saved to Palantir
 ```
 
-### Scrape Job
-
-```
-1. scrape.startScrape() queues job
-2. Worker claims job
-3. Playwright scrapes URL
-4. Result saved to job.result
-5. Frontend polls getScrapeStatus()
-```
-
 ## Environment Variables
 
 ```env
@@ -101,9 +89,6 @@
 PALANTIR_FOUNDRY_API_URL=https://...
 PALANTIR_ONTOLOGY_RID=ri.ontology...
 PALANTIR_AIP_API_KEY=...
-
-# External Services
-APIFY_API_TOKEN=...
 
 # R2 Storage
 R2_BASE_URL=...

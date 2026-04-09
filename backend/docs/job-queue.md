@@ -1,6 +1,6 @@
 # Job Queue
 
-SQLite-based job queue for async background tasks. Supports multiple job types with a unified worker.
+SQLite-based job queue for async background tasks.
 
 **Related docs:** [Vehicle Analysis](./vehicle-analysis.md) | [Web Search](./web-search.md)
 
@@ -25,8 +25,7 @@ API (tRPC)              SQLite Jobs           Worker
 
 | Type | Data Payload | Processor |
 |------|--------------|-----------|
-| `scrape` | `{ url: string }` | Playwright scraper |
-| `generate_analysis` | `{ carId: string }` | Vehicle analysis generator |
+| `generate_analysis` | `{ carId, scrapeResult?, carfaxText? }` (see `cars.createReport`) | Vehicle analysis generator |
 
 ## Files
 
@@ -57,11 +56,7 @@ Add a job to the queue.
 ```typescript
 import { enqueueJob } from "@/services/scraper/job-queue"
 
-// Scrape job
-const jobId = enqueueJob("scrape", { url: "https://..." })
-
-// Analysis job  
-const jobId = enqueueJob("generate_analysis", { carId: "car-123" })
+const jobId = enqueueJob("generate_analysis", { carId: "car-123", scrapeResult, carfaxText }, true)
 ```
 
 ### `getJob(id): Job | undefined`
@@ -86,7 +81,7 @@ Update job status (used by worker).
 ```typescript
 interface Job {
   id: string
-  type: string           // "scrape" | "generate_analysis"
+  type: string           // e.g. "generate_analysis"
   data: string | null    // JSON payload
   status: string         // "pending" | "processing" | "completed" | "failed"
   result: string | null  // JSON result on success
@@ -98,7 +93,7 @@ interface Job {
 
 ## How It Integrates
 
-1. **Car Creation** → Enqueues `generate_analysis` job
+1. **Car / report creation** → Enqueues `generate_analysis` job
 2. **Worker** → Claims job, runs [Vehicle Analysis](./vehicle-analysis.md)
 3. **Analysis** → Uses [Web Search](./web-search.md) for research
 4. **Result** → Saved to Palantir via [API Gateway](./palantir-api-gateway.md)
