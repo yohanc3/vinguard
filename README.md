@@ -4,9 +4,9 @@ In-depth Facebook Marketplace vehicle listing review app.
 
 ## Demo
 
-~[Demo Picture 1](files/demo-1.png)
-~[Demo Picture 2](files/demo-2.png)
-~[Demo Picture 3](files/demo-3.png)
+![Demo Picture 1](files/demo-1.png)
+![Demo Picture 2](files/demo-2.png)
+![Demo Picture 3](files/demo-3.png)
 
 ## Repository Layout
 
