@@ -13,17 +13,11 @@ RUN bun install --production --verbose
 COPY . .
 
 # Run build
-RUN bun build --compile --minify --sourcemap ./src --outfile vinguard-backend --external playwright --external playwright-core
-RUN bun build --compile --minify --sourcemap ./src/services/scraper/worker.ts --outfile vinguard-worker --external playwright --external playwright-core
+RUN bun build --compile --minify --sourcemap ./src --outfile vinguard-backend 
+RUN bun build --compile --minify --sourcemap ./src/services/scraper/worker.ts --outfile vinguard-worker 
 
 # Our applicaiton runner - we need playwright, so we install their runner
-FROM mcr.microsoft.com/playwright:v1.58.2-noble AS runner
-
-# Remove playwright browsers we don't need
-RUN rm -rf /ms-playwright/firefox-* \
-           /ms-playwright/webkit-* \
-           /ms-playwright/ffmpeg-* \
-           /ms-playwright/chromium-*
+FROM gcr.io/distroless/static-debian12 AS runner
 
 ENV NODE_ENV=production
 ENV VOLUME_PATH=/app/data
@@ -35,15 +29,12 @@ ENV APP_PORT=${BUILD_APP_PORT}
 EXPOSE ${APP_PORT}
 
 RUN mkdir -p /app/data && chmod 755 /app/data
-RUN mkdir -p /app/data/videos /app/data/traces && chmod 755 /app/data/videos /app/data/traces
 
 # Copy the compiled executable from the build stage
 COPY --from=build /app/vinguard-backend .
 
 COPY --from=build /app/src ./src
-COPY --from=build /app/package.json .
 COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/node_modules ./node_modules
 
 COPY --from=build /usr/local/bin/bun /usr/local/bin/bun
 

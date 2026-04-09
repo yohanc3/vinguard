@@ -148,7 +148,6 @@ async function testCreateReport() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            marketplaceListing: "https://www.facebook.com/marketplace/item/1234567890/",
             scrapeResult: TEST_SCRAPE_RESULT,
             carfaxText: TEST_CARFAX_TEXT,
             carReportKey: "test-reports/test-carfax.pdf",

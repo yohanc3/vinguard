@@ -38,7 +38,6 @@ const carContextSchema = z.object({
     listingPrice: z.number().nullable(),
     listingDetails: z.array(z.string()).nullable(),
     odometerReadings: z.array(z.number()).nullable(),
-    marketplaceListing: z.string().nullable().optional(),
 })
 
 const llmQueriesSchema = z.object({

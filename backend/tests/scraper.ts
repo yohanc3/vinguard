@@ -24,7 +24,7 @@ async function testDirectScrape() {
 
   try {
     const result = await Promise.race([
-      scrapeWithPlaywright(TEST_URL),
+      scrapeWithPlaywright(TEST_URL, false),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Scrape timed out")), TEST_TIMEOUT)
       ),

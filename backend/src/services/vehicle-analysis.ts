@@ -139,11 +139,10 @@ interface AnalysisJobData {
   carId: string
   scrapeResult?: ScrapeResult
   carfaxText?: string
-  marketplaceListing?: string
 }
 
 export async function generateVehicleAnalysis(jobData: AnalysisJobData): Promise<void> {
-  const { carId, scrapeResult, carfaxText, marketplaceListing } = jobData
+  const { carId, scrapeResult, carfaxText } = jobData
   const start = Date.now()
   let failedStep = "init"
   let queriesResponseRaw = ""
@@ -160,7 +159,6 @@ export async function generateVehicleAnalysis(jobData: AnalysisJobData): Promise
         listingPrice: scrapeResult.price ? parseFloat(scrapeResult.price.replace(/[^0-9.]/g, "")) : null,
         listingDetails: scrapeResult.details,
         carfaxReportText: carfaxText,
-        marketplaceListing: marketplaceListing ?? null,
       }
     } else {
       failedStep = "fetch_car_palantir"
@@ -192,7 +190,6 @@ export async function generateVehicleAnalysis(jobData: AnalysisJobData): Promise
         odometerReadings: car.odometerReadings,
         stateOfRegistration: car.stateOfRegistration,
         carReport: car.carReport,
-        marketplaceListing: car.marketplaceListing ?? null,
       }
     }
 

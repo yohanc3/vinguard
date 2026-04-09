@@ -294,7 +294,6 @@ export const carsRouter = router({
 
     createReport: publicProcedure
         .input(z.object({
-            marketplaceListing: z.string().url(),
             scrapeResult: z.object({
                 miles: z.string().nullable(),
                 price: z.string().nullable(),
@@ -314,7 +313,6 @@ export const carsRouter = router({
                     parameters: {
                         id: carId,
                         carReport: input.carReportKey,
-                        marketplaceListing: input.marketplaceListing,
                     },
                 }),
             })
@@ -326,7 +324,6 @@ export const carsRouter = router({
                     carId,
                     httpStatus: createRes.status,
                     responseBody,
-                    marketplaceListing: input.marketplaceListing,
                     carReportKey: input.carReportKey,
                 })
                 throw new TRPCError({
@@ -339,7 +336,6 @@ export const carsRouter = router({
                 carId,
                 scrapeResult: input.scrapeResult,
                 carfaxText: input.carfaxText,
-                marketplaceListing: input.marketplaceListing,
             }, true)
 
             void (async function finalizeCreateReportListing() {
@@ -359,7 +355,6 @@ export const carsRouter = router({
                                 ...pdfData,
                                 ...listingData,
                                 listingPictures: input.scrapeResult.photos,
-                                marketplaceListing: input.marketplaceListing,
                             },
                         }),
                     })
@@ -372,7 +367,6 @@ export const carsRouter = router({
                             httpStatus: updateRes.status,
                             responseBody,
                             ms: Date.now() - asyncStart,
-                            marketplaceListing: input.marketplaceListing,
                             scrapePhotoCount: input.scrapeResult.photos.length,
                             carfaxChars: input.carfaxText.length,
                         })
@@ -387,7 +381,6 @@ export const carsRouter = router({
                             errMessage: err.message,
                             responseBody: err.responseBody,
                             llmInput: err.llmInput,
-                            marketplaceListing: input.marketplaceListing,
                             scrapePhotoCount: input.scrapeResult.photos.length,
                             carfaxChars: input.carfaxText.length,
                         })
@@ -399,7 +392,6 @@ export const carsRouter = router({
                             errMessage: err.message,
                             responseBody: err.responseBody,
                             llmInput: err.llmInput,
-                            marketplaceListing: input.marketplaceListing,
                             scrapePhotoCount: input.scrapeResult.photos.length,
                             carfaxChars: input.carfaxText.length,
                         })
@@ -410,7 +402,6 @@ export const carsRouter = router({
                             ms: Date.now() - asyncStart,
                             errMessage: err instanceof Error ? err.message : "unknown",
                             stack: err instanceof Error ? err.stack : undefined,
-                            marketplaceListing: input.marketplaceListing,
                             scrapePhotoCount: input.scrapeResult.photos.length,
                             carfaxChars: input.carfaxText.length,
                         })
