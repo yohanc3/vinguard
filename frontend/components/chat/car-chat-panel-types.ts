@@ -8,7 +8,6 @@ export interface CarContext {
   listingPrice: number | null
   listingDetails: string[] | null
   odometerReadings: number[] | null
-  marketplaceListing: string | null
 }
 
 export interface Source {

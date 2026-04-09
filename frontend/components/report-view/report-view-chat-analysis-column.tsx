@@ -52,7 +52,6 @@ export function ReportViewChatAnalysisColumn({
                             listingPrice: car.listingPrice ?? null,
                             listingDetails: car.listingDetails ?? null,
                             odometerReadings: car.odometerReadings ?? null,
-                            marketplaceListing: car.marketplaceListing ?? null,
                         }}
                     />
                 </TabsContent>

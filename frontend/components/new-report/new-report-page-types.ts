@@ -6,7 +6,7 @@ export interface NewReportPageProps {
 export type Step = 1 | 2 | 3
 
 export const STEPS = [
-  { number: 1, label: "Listing URL" },
+  { number: 1, label: "Listing details" },
   { number: 2, label: "Upload CarFax" },
   { number: 3, label: "Review & Create" },
 ]

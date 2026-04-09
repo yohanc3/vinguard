@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { AppHeader } from "@/components/layout/app-header"
 import { StepIndicator } from "@/components/new-report/step-indicator"
 import { NewReportStepListingCard } from "@/components/new-report/new-report-step-listing-card"
@@ -9,19 +9,51 @@ import { NewReportStepReviewCard } from "@/components/new-report/new-report-step
 import { NewReportStepNavigation } from "@/components/new-report/new-report-step-navigation"
 import type { NewReportPageProps, Step, ScrapeResult } from "@/components/new-report/new-report-page-types"
 import { STEPS } from "@/components/new-report/new-report-page-types"
-import { useUrlValidation } from "@/hooks/use-url-validation"
 import { usePdfExtraction } from "@/hooks/use-pdf-extraction"
 import { useTRPC } from "@/lib/trpc"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
+
+function buildListingScrapeResult(input: {
+  listingYear: string
+  listingModel: string
+  listingDescription: string
+  listingPrice: string
+}): ScrapeResult {
+  const year = input.listingYear.trim()
+  const model = input.listingModel.trim()
+  const description = input.listingDescription.trim()
+  const details = `Year: ${year}\nModel: ${model}\n\n${description}`
+  return {
+    miles: null,
+    price: input.listingPrice.trim(),
+    photos: [],
+    details,
+  }
+}
+
+function isListingFormComplete(input: {
+  listingYear: string
+  listingModel: string
+  listingDescription: string
+  listingPrice: string
+}): boolean {
+  return (
+    input.listingYear.trim() !== "" &&
+    input.listingModel.trim() !== "" &&
+    input.listingDescription.trim() !== "" &&
+    input.listingPrice.trim() !== ""
+  )
+}
 
 export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
   const trpc = useTRPC()
   const [currentStep, setCurrentStep] = useState<Step>(1)
 
-  const [listingUrl, setListingUrl] = useState("")
-  const [scrapeJobId, setScrapeJobId] = useState<string | null>(null)
+  const [listingYear, setListingYear] = useState("")
+  const [listingModel, setListingModel] = useState("")
+  const [listingPrice, setListingPrice] = useState("")
+  const [listingDescription, setListingDescription] = useState("")
   const [scrapeResult, setScrapeResult] = useState<ScrapeResult | null>(null)
-  const [scrapeError, setScrapeError] = useState<string | null>(null)
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [carfaxText, setCarfaxText] = useState<string | null>(null)
@@ -31,20 +63,7 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
   const [pdfUploadError, setPdfUploadError] = useState<string | null>(null)
   const [createReportError, setCreateReportError] = useState<string | null>(null)
 
-  const { isValid: urlValid } = useUrlValidation(listingUrl)
   const { extractText, error: pdfError } = usePdfExtraction()
-
-  const startScrapeMutation = useMutation(trpc.scrape.startScrape.mutationOptions())
-
-  const scrapeStatusQuery = useQuery({
-    ...trpc.scrape.getScrapeStatus.queryOptions({ jobId: scrapeJobId ?? "" }),
-    enabled: Boolean(scrapeJobId),
-    refetchInterval: function(query) {
-      const status = query.state.data?.status
-      if (status === "completed" || status === "failed") return false
-      return 1500
-    },
-  })
 
   const getUploadUrlMutation = useMutation(trpc.files.getPresignedUploadUrl.mutationOptions())
   const createReportMutation = useMutation({
@@ -54,26 +73,6 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
       setCreateReportError(message)
     },
   })
-
-  useEffect(function handleScrapeComplete() {
-    if (scrapeStatusQuery.data?.status === "completed" && scrapeStatusQuery.data.result) {
-      setScrapeResult(scrapeStatusQuery.data.result as ScrapeResult)
-      setScrapeError(null)
-    } else if (scrapeStatusQuery.data?.status === "failed") {
-      setScrapeError(scrapeStatusQuery.data.error ?? "Scrape failed")
-    }
-  }, [scrapeStatusQuery.data])
-
-  async function handleStartScrape() {
-    setScrapeError(null)
-    setScrapeResult(null)
-    try {
-      const result = await startScrapeMutation.mutateAsync({ url: listingUrl })
-      setScrapeJobId(result.jobId)
-    } catch (err) {
-      setScrapeError(err instanceof Error ? err.message : "Failed to start scrape")
-    }
-  }
 
   async function handlePdfUpload(file: File) {
     setPdfFile(file)
@@ -118,7 +117,6 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
     setCreateReportError(null)
     try {
       const result = await createReportMutation.mutateAsync({
-        marketplaceListing: listingUrl.trim(),
         scrapeResult,
         carfaxText,
         carReportKey,
@@ -130,7 +128,12 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
   }
 
   function canProceedStep1() {
-    return scrapeResult !== null
+    return isListingFormComplete({
+      listingYear,
+      listingModel,
+      listingDescription,
+      listingPrice,
+    })
   }
 
   function canProceedStep2() {
@@ -142,14 +145,23 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
   }
 
   function nextStep() {
+    if (currentStep === 1) {
+      if (!isListingFormComplete({ listingYear, listingModel, listingDescription, listingPrice })) return
+      setScrapeResult(
+        buildListingScrapeResult({
+          listingYear,
+          listingModel,
+          listingDescription,
+          listingPrice,
+        }),
+      )
+    }
     if (currentStep < 3) setCurrentStep((currentStep + 1) as Step)
   }
 
   function prevStep() {
     if (currentStep > 1) setCurrentStep((currentStep - 1) as Step)
   }
-
-  const isScraping = scrapeJobId !== null && !scrapeResult && !scrapeError
 
   return (
     <div className="min-h-screen bg-background">
@@ -162,13 +174,14 @@ export function NewReportPage({ onBack, onComplete }: NewReportPageProps) {
 
         {currentStep === 1 && (
           <NewReportStepListingCard
-            listingUrl={listingUrl}
-            setListingUrl={setListingUrl}
-            urlValid={urlValid}
-            isScraping={isScraping}
-            scrapeResult={scrapeResult}
-            scrapeError={scrapeError}
-            handleStartScrape={handleStartScrape}
+            listingYear={listingYear}
+            setListingYear={setListingYear}
+            listingModel={listingModel}
+            setListingModel={setListingModel}
+            listingPrice={listingPrice}
+            setListingPrice={setListingPrice}
+            listingDescription={listingDescription}
+            setListingDescription={setListingDescription}
           />
         )}
 

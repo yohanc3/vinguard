@@ -14,7 +14,6 @@ import { ReportViewChatAnalysisColumn } from "@/components/report-view/report-vi
 export function ReportViewPage({ reportId, onBack }: ReportViewPageProps) {
     const trpc = useTRPC()
     const queryClient = useQueryClient()
-    const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [activePdfKey, setActivePdfKey] = useState<string | null>(null)
     const [vinCopied, setVinCopied] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -130,10 +129,9 @@ export function ReportViewPage({ reportId, onBack }: ReportViewPageProps) {
     }
 
     const carTitle = `${car.year ? String(car.year) + " " : ""}${car.make ?? "Vehicle"} ${car.model ?? ""}`
-    const images = car.listingPictures ?? []
     const isListingDataLoading = isCarListingDetailsLoading({
         car,
-        imageCount: images.length,
+        imageCount: (car.listingPictures ?? []).length,
         isFetching: carQuery.isFetching,
         hasVehicleAnalysis: serverAnalysis !== null,
     })
@@ -153,9 +151,6 @@ export function ReportViewPage({ reportId, onBack }: ReportViewPageProps) {
                     car={car}
                     carTitle={carTitle}
                     isListingDataLoading={isListingDataLoading}
-                    images={images}
-                    activeImageIndex={activeImageIndex}
-                    setActiveImageIndex={setActiveImageIndex}
                     copyVin={copyVin}
                     vinCopied={vinCopied}
                     activePdfKey={activePdfKey}
