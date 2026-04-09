@@ -7,7 +7,7 @@ import { db } from "../../db/db"
 import { users } from "../../db/schema"
 import { logger } from "../../logger"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+const JWT_SECRET = process.env.JWT_SECRET!
 
 const credentialsSchema = z.object({
   email: z.string().email(),
