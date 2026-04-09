@@ -76,28 +76,10 @@
 1. User sends message
 2. chat.sendMessageStream() starts SSE
 3. LLM generates search queries
-4. Web search runs (DDG + extraction)
+4. Web search runs (DDG + result extraction in parallel)
 5. LLM generates response with sources
 6. Response streamed to frontend
 7. Chat history saved to Palantir
-```
-
-## Environment Variables
-
-```env
-# Palantir
-PALANTIR_FOUNDRY_API_URL=https://...
-PALANTIR_ONTOLOGY_RID=ri.ontology...
-PALANTIR_AIP_API_KEY=...
-
-# R2 Storage
-R2_BASE_URL=...
-R2_BUCKET_NAME=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-
-# Database
-DB_FILE_NAME=database.sqlite
 ```
 
 ## Running
@@ -109,7 +91,7 @@ bun install
 # Run backend API
 bun run dev
 
-# Run worker (separate terminal)
+# Run worker
 bun run worker
 
 # Run tests
