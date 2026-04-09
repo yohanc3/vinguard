@@ -4,9 +4,14 @@ In-depth Facebook Marketplace vehicle listing review app.
 
 ## Demo
 
-![Demo Picture 1](files/demo-1.png)
-![Demo Picture 2](files/demo-2.png)
-![Demo Picture 3](files/demo-3.png)
+<div style="display: flex; gap: 10px;">
+  <img src="files/demo-1.png" alt="Demo Picture 1" width="500">
+  <img src="files/demo-2.png" alt="Demo Picture 2" width="500">
+</div>
+
+<div style="margin-top: 10px;">
+  <img src="files/demo-3.png" alt="Demo Picture 3" width="500">
+</div>
 
 ## Repository Layout
 
