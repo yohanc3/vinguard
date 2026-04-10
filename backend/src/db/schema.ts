@@ -13,39 +13,6 @@ export const users = sqliteTable("users", {
   ),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
-  cars: many(cars),
-  files: many(files),
-}));
-
-export const cars = sqliteTable("cars", {
-  id: text("id").primaryKey(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id),
-  vin: text("vin"),
-  make: text("make"),
-  model: text("model"),
-  year: integer("year"),
-  trim: text("trim"),
-  exteriorColor: text("exterior_color"),
-  interiorColor: text("interior_color"),
-  listingPrice: integer("listing_price"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(),
-  ),
-});
-
-export const carsRelations = relations(cars, ({ one }) => ({
-  user: one(users, {
-    fields: [cars.userId],
-    references: [users.id],
-  }),
-}));
-
 export const files = sqliteTable("files", {
   id: text("id").primaryKey(),
   userId: integer("user_id")
@@ -81,8 +48,6 @@ export const jobs = sqliteTable("jobs", {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Car = typeof cars.$inferSelect;
-export type NewCar = typeof cars.$inferInsert;
 export type File = typeof files.$inferSelect;
 export type NewFile = typeof files.$inferInsert;
 export type Job = typeof jobs.$inferSelect;
