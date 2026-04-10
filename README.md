@@ -1,6 +1,6 @@
 # Vinguard
 
-In-depth Facebook Marketplace vehicle listing review app.
+In-depth Facebook Marketplace vehicle listing review app. Try it out for free at [vinguard.com](https://www.vinguard.app/)
 
 ## Demo
 
